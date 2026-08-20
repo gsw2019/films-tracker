@@ -9,7 +9,7 @@ end
 
 local target_col = 1  -- col B
 
-for row = 80, 195 do
+for row = 74, 195 do
   local curr_str = sc.lgetstr(target_col, row)
   if curr_str and curr_str ~= "" then
     -- Lua global sub
