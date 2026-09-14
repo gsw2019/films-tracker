@@ -3,7 +3,7 @@
 
 newsheet "Sheet1"
 movetosheet "Sheet1"
-offscr_sc_cols 7
+offscr_sc_cols 0
 offscr_sc_rows 0
 nb_frozen_rows 0
 nb_frozen_cols 0
@@ -13,6 +13,7 @@ format A 5 2 0
 format B 60 2 0
 format C 20 2 0
 format D 20 2 0
+format E 13 2 0
 format F 35 2 0
 format G 25 2 0
 format H 25 2 0
@@ -25,8 +26,8 @@ format O 15 2 0
 label B2 = "FILM"
 label C2 = "GENRE(S)"
 label D2 = "RELEASE DATE"
-label E2 = "  RUNTIME (M)  "
-label F2 = "            DIRECTOR(S)             "
+label E2 = "RUNTIME (M)"
+label F2 = "DIRECTOR(S)"
 label G2 = "WRITER(S)"
 label H2 = "CAST"
 label I2 = "COMPOSER(S)"
@@ -2302,4 +2303,4 @@ cellcolor B998 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor D998 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor B999 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor D999 "fg=MAGENTA bg=DEFAULT_COLOR"
-goto O2
+goto A0
