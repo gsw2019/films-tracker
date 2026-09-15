@@ -23,6 +23,8 @@ format L 19 2 0
 format M 14 2 0
 format N 25 2 0
 format O 15 2 0
+let A0 = 1
+trigger A0 "mode=W type=LUA file=insert_film_data_single.lua function=main"
 label B2 = "FILM"
 label C2 = "GENRE(S)"
 label D2 = "RELEASE DATE"
@@ -2303,4 +2305,4 @@ cellcolor B998 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor D998 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor B999 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor D999 "fg=MAGENTA bg=DEFAULT_COLOR"
-goto A0
+goto B2
