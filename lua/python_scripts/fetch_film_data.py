@@ -14,11 +14,15 @@ import json
 from dotenv import load_dotenv
 from colorama import init, Fore
 from typing import Any
+from requests import Response
 
 load_dotenv()
 
 URLS:dict[str, str] = {
+    # expects title string
     "film_search" : "https://api.themoviedb.org/3/search/movie?query={}&include_adult=false&language=en-US&page=1",
+
+    # expects film id
     "film_details" : "https://api.themoviedb.org/3/movie/{}?language=en-US",
     "film_credits" : "https://api.themoviedb.org/3/movie/{}/credits?language=en-US",
     "film_videos" : "https://api.themoviedb.org/3/movie/{}/videos?language=en-US"
@@ -33,8 +37,8 @@ HEADERS: dict[str, str] = {
 def ask_film_index(opts: list[str]) -> int:
     '''Spawns an input window that list the film options a user can choose between
 
-    :param opts: list of movie titles and release date
-    :return: index (by 1) of movie chosen by user
+    :param opts: List of movie titles and release date
+    :return: Index (by 1) of movie chosen by user
     '''
     # format the options for the AppleScript
     applescript_list = "{" + ', '.join(opts) + "}"
@@ -67,8 +71,8 @@ def ask_film_index(opts: list[str]) -> int:
 def ask_title_change(curr_title: str) -> str:
     '''Spawns an input window that asks the user if they want to change the film title
 
-    :param search: tmdb object
-    :param index: index of movie title chosen
+    :param curr_title: Title of movie user selected
+    :return: str of title chosen
     '''
     script = f'''
     tell application "System Events"
@@ -93,6 +97,11 @@ def ask_title_change(curr_title: str) -> str:
 
 
 def search_for_film(search_title: str) -> tuple[str, int]:
+    '''Fetch the results of searching tmdb for a film. Can contain multiple results
+
+    :param search_title: Title from the sc-im spreasheet
+    :return: tuple containing the chosen film title and that films id
+    '''
     # search for film
     response = requests.get(URLS["film_search"].format(search_title), headers=HEADERS)
     json_data: dict[str, Any] = json.loads(response.text)
@@ -119,31 +128,151 @@ def search_for_film(search_title: str) -> tuple[str, int]:
     return (film_title, film_id)
 
 
-def get_film_details(res_dict: dict[str, Any]) -> None:
-    '''Fetches the films details the spreadsheet tracks:
+def parse_film_genres(res_dict: dict[str, Any], key: str, details_json_data: dict[str, Any]) -> None:
+    '''Parses the films genre(s) from the details data and assigns them to respective
+    key in the result dictionary
 
-        GENRE(S), RELEASE DATE, RUNTIME, STUDIO(S)
-
-    and assignss them to that key in the result dictionary
-
-    :param res_dict: result dictionary where data is stored
+    :param res_dict: Result dictionary where data is stored
+    :param key: Dictionary key to write to
+    :param details_json_data: json formatted details data
     '''
-    pass
+    # genre element is an array of objects
+    genre_list = []
+    genres: list[dict[str, Any]] = details_json_data["genres"]
+    for genre in genres:
+        if genre["name"]:
+            genre_list.append(genre["name"])
+
+    res_dict[key]= genre_list
 
 
-def get_film_credits(res_dict: dict[str, Any]) -> None:
-    '''Fetches the fillms credits the spreadsheet tracks:
+def parse_film_release_date(res_dict: dict[str, Any], key: str, details_json_data: dict[str, Any]) -> None:
+    '''Parse the films release date and assign it to respective key in
+    result dictionary
 
-        DIRECTOR(S), WRITER(S), CAST, COMPOSER(S)
-
-    and assigns them to that key in the result dictionary
-
-    :param res_dict: result dictionary where data is stored
+    :param res_dict: Result dictionary where data is written
+    :param key: Dictionary key to write to
+    :param details_json_data: json formatted details data
     '''
-    pass
+    # release date is a single str
+    res_dict[key]= details_json_data["release_date"] if details_json_data["release_date"] else None
 
 
-def ask_user_input(res_dict: dict[str, Any]) -> None:
+def parse_film_runtime(res_dict: dict[str, Any], key:str, details_json_data: dict[str, Any]) -> None:
+    '''Parse the films runtime and assign it to respective key in result 
+    dictionary
+
+    :param res_dict: Result dictionary where data is written
+    :param key: Dictionary key to write to
+    :param details_json_data: json formatted details data
+    '''
+    # runtime is a single int in minutes
+    res_dict[key] = details_json_data["runtime"] if details_json_data["runtime"] else None
+
+
+def parse_film_studios(res_dict: dict[str, Any], key: str, details_json_data: dict[str, Any]) -> None:
+    '''Parses the films studios(s) from the details data and assigns them to respective
+    key in the result dictionary
+
+    :param res_dict: Result dictionary where data is stored
+    :param key: Dictionary key to write to
+    :param details_json_data: json formatted details data
+    '''
+    # studios is a array of objects
+    studio_list = []
+    studios: list[dict[str, Any]] = details_json_data["production_companies"]
+    for studio in studios:
+        if studio["name"]:
+            studio_list.append(studio["name"])
+
+    res_dict[key] = studio_list
+
+
+def parse_film_directors(res_dict, key, credits_json_data) -> None:
+    '''Parses the films directors(s) from the credits data and assigns them to respective
+    key in the result dictionary
+
+    :param res_dict: Result dictionary where data is stored
+    :param key: Dictionary key to write to
+    :param details_json_data: json formatted credits data
+    '''
+    # crew is an array of objects
+    crew: list[dict[str, Any]] = credits_json_data["crew"]
+
+    # director(s), writer(s), and composer(s) are apart of the crew
+    director_list = []
+    for crew_member in crew:
+        job: str = crew_member["job"]
+        if job and job == "Director":
+            director_list.append(crew_member["name"])
+
+    res_dict[key] = director_list
+
+
+def parse_film_writers(res_dict, key, credits_json_data) -> None:
+    '''Parses the films writers(s) from the credits data and assigns them to respective
+    key in the result dictionary
+
+    :param res_dict: Result dictionary where data is stored
+    :param key: Dictionary key to write to
+    :param details_json_data: json formatted credits data
+    '''
+    # crew is an array of objects
+    crew: list[dict[str, Any]] = credits_json_data["crew"]
+
+    # director(s), writer(s), and composer(s) are apart of the crew
+    writer_list = []
+    for crew_member in crew:
+        job: str = crew_member["job"]
+        if job and (job == "Writer" or job == "Story"):
+            writer_list.append(crew_member["name"])
+
+    res_dict[key] = writer_list
+
+
+def parse_film_cast(res_dict, key, credits_json_data) -> None:
+    '''Parses the films cast from the credits data and assigns them to respective
+    key in the result dictionary
+
+    :param res_dict: Result dictionary where data is stored
+    :param key: Dictionary key to write to
+    :param details_json_data: json formatted credits data
+    '''
+    # cast is an array of objects
+    cast: list[dict[str, Any]] = credits_json_data["cast"]
+
+    # save 15 cast members or the length of cast
+    limit: int = 15 if len(cast) > 15 else len(cast)
+    cast_list = []
+    for i in range(0, limit):
+        if cast[i]["name"]:
+            cast_list.append(cast[i]["name"])
+
+    res_dict[key] = cast_list
+
+
+def parse_film_composers(res_dict, key, credits_json_data) -> None:
+    '''Parses the films composer(s) from the credits data and assigns them to respective
+    key in the result dictionary
+
+    :param res_dict: Result dictionary where data is stored
+    :param key: Dictionary key to write to
+    :param details_json_data: json formatted credits data
+    '''
+    # crew is an array of objects
+    crew: list[dict[str, Any]] = credits_json_data["crew"]
+
+    # director(s), writer(s), and composer(s) are apart of the crew
+    composer_list = []
+    for crew_member in crew:
+        job: str = crew_member["job"]
+        if job and job == "Original Music Composer":
+            composer_list.append(crew_member["name"])
+
+    res_dict[key] = composer_list
+
+
+def ask_user_input(res_dict: dict[str, Any], peronal_keys: list[str]) -> None:
     '''Ask the user input via an AppleScript popup window. The user related features are:
 
         RATING, WATCHED (# times), LAST WATCHED, NOTES
@@ -151,8 +280,10 @@ def ask_user_input(res_dict: dict[str, Any]) -> None:
     and assigns them to that key in the result dictionary
 
     :param res_dict: result dictionary where data is stored
-
     '''
+
+    # TODO
+
     pass
 
 
@@ -160,9 +291,17 @@ def film_data_json(feat_names: list[str], film_id: int, film_title: str) -> str:
     '''Organizes film data fetched into a Python dict, encodes to a JSON object, and returns
     a string of the JSON object
 
+    Details:    GENRE(S), RELEASE DATE, RUNTIME (M), STUDIO(S)
+
+    Credits:    DIRECTOR(S), WRITER(S), CAST, COMPOSER(S)
+
+    Video:      TODO
+
+    Personal:   RATING, WATCHED (# times), LAST WATCHED, NOTES
+
     :param feat_names: Feature names currently in the sc-im spreadsheet
     :param film_id: Unique id for the film
-    :param film_title: updated title if user edited it or original title
+    :param film_title: Updated title if user edited it or original title
     :return: str of JSON object
     '''
     # create dict with feature names
@@ -174,12 +313,50 @@ def film_data_json(feat_names: list[str], film_id: int, film_title: str) -> str:
         else:
             res_dict[name] = None
 
+    # make and store the requets expected
+    details_response: Response = requests.get(URLS["film_details"].format(film_id), headers=HEADERS)
+    details_json_data: dict[str, Any] = json.loads(details_response.text)
+
+    credits_response: Response = requests.get(URLS["film_credits"].format(film_id), headers=HEADERS)
+    credits_json_data: dict[str, Any] = json.loads(credits_response.text)
+
+    videos_response = ""
+    videos_json_data = ""
+
     # call functions with dict which will fill their respective keys with values
-    get_film_details(res_dict)
-    get_film_credits(res_dict)
-    get_film_user_input(res_dict)
+    peronal_keys = ["RATING", "WATCHED (# times)", "LAST WATCHED", "NOTES"]
+    for key,value in res_dict.items():
+
+        # details
+        if key == "GENRE(S)":
+            parse_film_genres(res_dict, key, details_json_data)
+        elif key == "RELEASE DATE":
+            parse_film_release_date(res_dict, key, details_json_data)
+        elif key == "RUNTIME (M)":
+            parse_film_runtime(res_dict, key, details_json_data)
+        elif key == "STUDIO(S)":
+            parse_film_studios(res_dict, key, details_json_data)
+
+        # credits
+        elif key == "DIRECTOR(S)":
+            parse_film_directors(res_dict, key, credits_json_data)
+        elif key == "WRITER(S)":
+            parse_film_writers(res_dict, key, credits_json_data)
+        elif key == "CAST":
+            parse_film_cast(res_dict, key, credits_json_data)
+        elif key == "COMPOSER(S)":
+            parse_film_composers(res_dict, key, credits_json_data)
+
+        # video
+        elif key == "LINK":
+            pass
+
+        # personal
+        elif key in peronal_keys:
+            ask_user_input(res_dict, peronal_keys)
 
     return json.dumps(res_dict)
+
 
 def main():
     # config
@@ -198,9 +375,7 @@ def main():
     film_title, film_id = search_for_film(search_title)
 
     # send feature names, film indetifier number, and potentially updated title if user edited it
-    res: str = film_data_json(feat_names, film_id, film_title)
-
-    return res
+    print(film_data_json(feat_names, film_id, film_title))
 
 
 if __name__ == "__main__":
