@@ -5,7 +5,7 @@
 ]]
 
 
-file = io.open("luascript_output.txt", "w")
+file = io.open("lua_script_logs.txt", "w")
 
 JSON = dofile("lua/json.lua")
 
@@ -38,17 +38,21 @@ function dump(o)
    else
       return tostring(o)
    end
+
 end
 
 
 function get_features()
   --[[
-        checks the spreadsheet for current features and stores their names
+        Checks the spreadsheet for current features and stores their names.
+        Expected to be consecutive starting from FEAT_NAMES_ROW and FEAT_NAMES_START_COL. Only
+        recordss the names until the first empty column
 
         return: 1D csv string of feature names
+        return: table array of feature names
   ]]
   -- record feature names
-  local feat_names = {}
+  local feat_names_table = {}
   local col = FEAT_NAMES_START_COL
   while true do
     local val = sc.lgetstr(col, FEAT_NAMES_ROW)
@@ -57,24 +61,16 @@ function get_features()
     else
       local clean_str = string.gsub(val, "^%s+", "")   -- from start of string ^, all whitespaces %s+, replaaced with ""
       clean_str = string.gsub(clean_str, "%s+$", "")   -- from end of string $, all whitespaces %s+, replaced with ""
-      table.insert(feat_names, clean_str)
+      table.insert(feat_names_table, clean_str)
       col = col + 1
     end
   end
 
   -- build string of csv for feature names
-  local feat_names_csv = ""
-  for key,value in ipairs(feat_names) do
-      feat_names_csv = feat_names_csv..value..','
-  end
+  local feat_names_csv = table.concat(feat_names_table, ",")
 
   return feat_names_csv, feat_names_table
 
-end
-
-
-function table_to_csv(o)
-  -- TODO
 end
 
 
@@ -88,15 +84,24 @@ function write_to_sheet(curr_col, curr_row, feat_names_table, film_data)
         param film_data: table containing film data
   ]]
   for index,value in ipairs(feat_names_table) do
+    -- skip features we dont have data for
+    if film_data[value] == nil then
+      goto continue
+    end
+
+    -- where to write to
+    local target_col = curr_col + (index - 1)
+
     -- check if nested table
     if type(film_data[value]) == "table" then
-      ;
+      -- should only ever be table array
+      sc.lsetstr(target_col, curr_row, table.concat(film_data[value], ", "))
     else
-      local target_col = curr_col + (index - 1)
       sc.lsetstr(target_col, curr_row, film_data[value])
     end
-  end
 
+    ::continue::
+  end
 
 end
 
@@ -116,20 +121,28 @@ function main_single(c, r, mode)
   -- get film title from current cursor pos
   local curr_col = sc.curcol()
   local curr_row = sc.currow()
-  local title = sc.lgetstr(cur_col, cur_row)
+  local title = sc.lgetstr(curr_col, curr_row)
 
   -- call Python script and capture output
   local command = string.format('python3 %s "%s" "%s"', PYTHON_SCRIPT, feat_names_csv, title)
+
+  file:write(command .. "\n")
+  file:flush()
+
   local handle = io.popen(command)
   if handle then
     local res = handle:read("*a")
     handle:close()
 
-    local film_data = JSON.decode(res)
-    write_to_sheet(curr_col, curr_row, feat_names_table, film_data)
+    file:write(res .. "\n")
+    file:flush()
 
-    file:write(dump(film_data))
-    file:close()
+    local film_data = JSON.decode(res)
+
+    file:write(dump(film_data) .. "\n")
+    file:flush()
+
+    write_to_sheet(curr_col, curr_row, feat_names_table, film_data)
 
   else
     -- log command that tried to run

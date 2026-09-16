@@ -12,20 +12,24 @@ import requests
 import json
 
 from dotenv import load_dotenv
-from colorama import init, Fore
 from typing import Any
 from requests import Response
+from io import TextIOWrapper
 
 load_dotenv()
 
+
+LOG_FILE_NAME: str = "python_script_logs.txt"
+LOG_FILE: TextIOWrapper = open(LOG_FILE_NAME, "w")
+
 URLS:dict[str, str] = {
     # expects title string
-    "film_search" : "https://api.themoviedb.org/3/search/movie?query={}&include_adult=false&language=en-US&page=1",
+    "film_search" : "https://api.themoviedb.org/3/search/movie",
 
     # expects film id
-    "film_details" : "https://api.themoviedb.org/3/movie/{}?language=en-US",
-    "film_credits" : "https://api.themoviedb.org/3/movie/{}/credits?language=en-US",
-    "film_videos" : "https://api.themoviedb.org/3/movie/{}/videos?language=en-US"
+    "film_details" : "https://api.themoviedb.org/3/movie/{}",
+    "film_credits" : "https://api.themoviedb.org/3/movie/{}/credits",
+    "film_videos" : "https://api.themoviedb.org/3/movie/{}/videos"
 }
 
 HEADERS: dict[str, str] = {
@@ -102,9 +106,16 @@ def search_for_film(search_title: str) -> tuple[str, int]:
     :param search_title: Title from the sc-im spreasheet
     :return: tuple containing the chosen film title and that films id
     '''
-    # search for film
-    response = requests.get(URLS["film_search"].format(search_title), headers=HEADERS)
+    # make request to search for film and log it
+    query_data: dict[str, str] = {"query" : search_title, "include_adult" : "false", "language" : "en-US", "page" : "1"}
+    response = requests.get(URLS["film_search"], params=query_data, headers=HEADERS)
+    LOG_FILE.write(f"\n-- REQUEST: {response.url}")
+
+    # format to python object from JSON
     json_data: dict[str, Any] = json.loads(response.text)
+
+    with open("pythonscript_output.txt", "w") as file:
+        file.write(response.text)
 
     # if more than one result, allow user to choose film
     index: int = 0
@@ -115,11 +126,22 @@ def search_for_film(search_title: str) -> tuple[str, int]:
         # build AppleScript list
         opts: list[str] = []
         for f in film_list:
-            opts.append(f'"[{count+1}] {f['title']} ({f['release_date']})"')
+            cleaned_title = f["title"].replace('"', '\\"')
+            opts.append(f'"[{count+1}] {cleaned_title} ({f['release_date']})"')
             count += 1
+
+        with open("pythonscript_output.txt", "w") as file:
+            file.write("\n\nabout to call AppleScript 1\n")
+            file.write(str(opts))
+
 
         # index in pop up window is by 1, so need to 0 index
         index = ask_film_index(opts) - 1
+
+    with open("pythonscript_output.txt", "w") as file:
+        file.write("\n\nabout to call AppleScript 2\n")
+
+
 
     # grab film title (or new one given by user) and its id
     film_title: str = ask_title_change(json_data["results"][index]["title"])
@@ -314,16 +336,19 @@ def film_data_json(feat_names: list[str], film_id: int, film_title: str) -> str:
             res_dict[name] = None
 
     # make and store the requets expected
-    details_response: Response = requests.get(URLS["film_details"].format(film_id), headers=HEADERS)
+    details_query_data: dict[str, str] = {"language" : "en_US"}
+    details_response: Response = requests.get(URLS["film_details"].format(film_id), params=details_query_data, headers=HEADERS)
     details_json_data: dict[str, Any] = json.loads(details_response.text)
 
-    credits_response: Response = requests.get(URLS["film_credits"].format(film_id), headers=HEADERS)
+    credits_query_data: dict[str, str] = {"language" : "en-US"}
+    credits_response: Response = requests.get(URLS["film_credits"].format(film_id), params=credits_query_data, headers=HEADERS)
     credits_json_data: dict[str, Any] = json.loads(credits_response.text)
 
+    videos_query_data: dict[str, str] = {"language" : "en-US"}
     videos_response = ""
     videos_json_data = ""
 
-    # call functions with dict which will fill their respective keys with values
+    # call functions that will fill their respective keys with values
     peronal_keys = ["RATING", "WATCHED (# times)", "LAST WATCHED", "NOTES"]
     for key,value in res_dict.items():
 
@@ -355,28 +380,34 @@ def film_data_json(feat_names: list[str], film_id: int, film_title: str) -> str:
         elif key in peronal_keys:
             ask_user_input(res_dict, peronal_keys)
 
+
+    with open("pythonscript_output.txt", "w") as file:
+        file.write(json.dumps(res_dict))
+        file.write("\n")
+
     return json.dumps(res_dict)
 
 
 def main():
-    # config
-    init(autoreset=True)
 
     # check has feature names and title args
     if len(sys.argv) != 3:
-        print(Fore.RED + "Error: too many args")
+        LOG_FILE.write("\n-- ERROR: wrong number of args\n")
+        LOG_FILE.write("-- usage: python3 fetch_film_data.py [feat_names] [search_title]\n")
+        LOG_FILE.close()
         sys.exit(1)
 
     # make a list of feature names
     # removes the last empty string since lua script appends extra comma
-    feat_names: list[str] = sys.argv[1][:len(sys.argv[1]) - 1].split(",")
+    feat_names: list[str] = sys.argv[1].split(",")
     search_title: str = sys.argv[2].strip()
-
+ 
     film_title, film_id = search_for_film(search_title)
 
     # send feature names, film indetifier number, and potentially updated title if user edited it
     print(film_data_json(feat_names, film_id, film_title))
 
+    
 
 if __name__ == "__main__":
     main()

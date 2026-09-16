@@ -1,0 +1,2 @@
+python3 lua/python_scripts/fetch_film_data.py hi "FILM,GENRE(S),RELEASE DATE,RUNTIME (M),DIRECTOR(S),WRITER(S),CAST,COMPOSER(S),STUDIO(S),RATING,WATCHED (# times),LAST WATCHED,NOTES,LINK" "Captain Marvel"
+

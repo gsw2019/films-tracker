@@ -1,0 +1,2 @@
+-- ERROR: wrong number of args
+-- usage: python3 fetch_film_data.py [feat_names] [search_title]
