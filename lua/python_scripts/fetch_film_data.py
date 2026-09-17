@@ -11,8 +11,10 @@ import subprocess
 import requests
 import json
 import io
+import tkinter as tk
 
 from dotenv import load_dotenv
+from tkinter import ttk, font
 from typing import Any, TextIO
 from requests import Response
 from types import FrameType
@@ -51,16 +53,37 @@ def no_films_found_message(spreadsheet_title: str):
     was found on tmdb
 
     :param spreadsheet_title: title grabbed from sc-im spreadsheet
-    '''
-    script = f'''
-    tell application "System Events"
-        activate
-        display dialog "🛑 No films with \\"{spreadsheet_title}\\" were found in TMDb" buttons {{"OK"}} default button "OK"
-    end tell
-    '''
+    ''' 
+    # spawn window
+    root = tk.Tk()
+    root.title("🛑 Alert")
+    root.attributes(topmost=True)   # bring to front
 
-    process = subprocess.Popen(['osascript', '-e', script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    stdout, _ = process.communicate()
+    # add a frame widget to put stuff in
+    frame = ttk.Frame(root, padding=10)
+    frame.pack(fill="both", expand=True)
+
+    # define how big the spreadsheet title will be
+    title_font = font.Font(family="Arial", size=14, weight="bold")
+
+    # build labels for each part of message
+    ttk.Label(frame, text="No films with the title:", font=("Arial", 12)).pack(expand=True, anchor="w")
+    ttk.Label(frame, text=f'"{spreadsheet_title}"', font=title_font).pack(expand=True, anchor="w")
+    ttk.Label(frame, text="were found in TMDb.", font=("Arial", 12)).pack(expand=True, anchor="w")
+
+    # get variable length title
+    title_width = title_font.measure(f'"{spreadsheet_title}"')
+
+    # set size of window dynamically with title width
+    root.geometry(f"{title_width +50}x150")
+    root.minsize(title_width+50, 150)
+    root.maxsize(title_width+50, 150)
+
+    # add OK button
+    ttk.Button(frame, text="OK", command=root.destroy).pack(expand=True, anchor="e", padx=10)
+
+    root.mainloop()
+
 
 
 def ask_film_index(opts: list[str], spreadsheet_title: str) -> int:
@@ -69,36 +92,33 @@ def ask_film_index(opts: list[str], spreadsheet_title: str) -> int:
     :param opts: List of movie titles and release date
     :return: Index (by 1) of movie chosen by user
     '''
-    # format the options for the AppleScript
-    applescript_list = "{" + ', '.join(opts) + "}"
+    # spawn window
+    root = tk.Tk()
+    root.title("Choose Film")
+    root.attributes(topmost=True)
 
-    # osascript, AppleScript
-    script = f'''
-    tell application "System Events"
-        activate
-        set chosen to choose from list {applescript_list} with title "Choose Movie" with prompt "\n ⚠️ Multiple movies found for \\"{spreadsheet_title}\\". Please choose:\n"
-        if chosen is false then
-            return "CANCELLED"
-        else
-            return item 1 of chosen
-        end if
-    end tell
-    '''
+    # create a scrollable widget inside the root window with our film options
+    listbox = tk.Listbox(root, selectmode=tk.SINGLE, height=10)
+    for film in opts:
+        listbox.insert(tk.END, film)
 
-    process = subprocess.Popen(['osascript', '-e', script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    stdout, _ = process.communicate()
+    listbox.pack(fill="both", expand=True, pady=10)
 
-    # user pressed cancel on pop up window
-    if stdout.strip() == "CANCELLED":
-        LOG_FILE.write("\n-- CANCELLED\n")
-        LOG_FILE.write("--      Popup: choose film\n")
-        LOG_FILE.close()
-        print(LOG_CODES["cancelled"], end="")
-        sys.exit(0)
+    # function for button to use
+    def get_selected_index():
+        if listbox.curselection():
+            root.destroy()
+            return int(listbox.curselection()[0])
 
-    left_idx = stdout.find('[')
-    right_idx = stdout.find(']')
-    return int(stdout[left_idx + 1 : right_idx])
+    # add button that returns index of selection
+    ttk.Button(root, text="Select film", command=get_selected_index).pack()
+    
+    # ad button to cancel selection
+    ttk.Button(root, text="Cancel", command=root.destroy).pack()
+    
+    root.mainloop()
+
+    return 0
 
 
 def ask_title_change(curr_title: str) -> str:

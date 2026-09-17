@@ -222,7 +222,7 @@ function main_multiple(c, r, mode)
     the first target film. Any empty cells in between target films will stop
     execution.
   ]]
- 
+
   -- clear python logs for new batch
   local python_logs = io.open("logs_python_script.txt", "w")
   python_logs:close()
