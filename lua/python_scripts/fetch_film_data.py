@@ -97,9 +97,19 @@ def ask_film_index(opts: list[str], spreadsheet_title: str) -> int:
     root.title("Choose Film")
     root.attributes(topmost=True)
 
+    # draw a frame inside root window
+    frame = ttk.Frame(root, padding=10)
+    frame.pack(fill="both", expand=True)
+
+    list_element_font = font.Font(family="Arial", size=12)
+
     # create a scrollable widget inside the root window with our film options
-    listbox = tk.Listbox(root, selectmode=tk.SINGLE, height=10)
+    listbox = tk.Listbox(frame, selectmode=tk.SINGLE, height=10, font=list_element_font)
+    max_element_width = 0
     for film in opts:
+        list_element_width = list_element_font.measure(film)
+        if list_element_width > max_element_width:
+            max_element_width = list_element_width
         listbox.insert(tk.END, film)
 
     listbox.pack(fill="both", expand=True, pady=10)
@@ -111,11 +121,14 @@ def ask_film_index(opts: list[str], spreadsheet_title: str) -> int:
             return int(listbox.curselection()[0])
 
     # add button that returns index of selection
-    ttk.Button(root, text="Select film", command=get_selected_index).pack()
-    
+    ttk.Button(frame, text="Select film", command=get_selected_index).pack()
+
     # ad button to cancel selection
-    ttk.Button(root, text="Cancel", command=root.destroy).pack()
-    
+    ttk.Button(frame, text="Cancel", command=root.destroy).pack()
+
+    # dynamically adjust window width for longest title
+    root.geometry(f"{max_element_width + 50}x250")
+
     root.mainloop()
 
     return 0
