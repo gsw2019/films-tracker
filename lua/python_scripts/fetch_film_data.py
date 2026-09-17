@@ -10,17 +10,25 @@ import sys
 import subprocess
 import requests
 import json
+import io
 
 from dotenv import load_dotenv
-from typing import Any
+from typing import Any, TextIO
 from requests import Response
-from io import TextIOWrapper
+from types import FrameType
+from json import JSONDecodeError
 
 load_dotenv()
 
 
-LOG_FILE_NAME: str = "python_script_logs.txt"
-LOG_FILE: TextIOWrapper = open(LOG_FILE_NAME, "w")
+LOG_FILE_NAME: str = "logs_python_script.txt"
+LOG_FILE: TextIO = io.StringIO()        # temp place holder for easing type safety
+LOG_CODES = {
+    "error" : -1,
+    "cancelled" : -2,
+    "no_result" : -3
+}
+LOG_DELIM = f"\n\n {"=" * 125}\n"
 
 URLS:dict[str, str] = {
     # expects title string
@@ -38,7 +46,24 @@ HEADERS: dict[str, str] = {
 }
 
 
-def ask_film_index(opts: list[str]) -> int:
+def no_films_found_message(spreadsheet_title: str):
+    '''Spawns a window that informs the user no films with spreadsheet_title title
+    was found on tmdb
+
+    :param spreadsheet_title: title grabbed from sc-im spreadsheet
+    '''
+    script = f'''
+    tell application "System Events"
+        activate
+        display dialog "🛑 No films with \\"{spreadsheet_title}\\" were found in TMDb" buttons {{"OK"}} default button "OK"
+    end tell
+    '''
+
+    process = subprocess.Popen(['osascript', '-e', script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    stdout, _ = process.communicate()
+
+
+def ask_film_index(opts: list[str], spreadsheet_title: str) -> int:
     '''Spawns an input window that list the film options a user can choose between
 
     :param opts: List of movie titles and release date
@@ -51,7 +76,7 @@ def ask_film_index(opts: list[str]) -> int:
     script = f'''
     tell application "System Events"
         activate
-        set chosen to choose from list {applescript_list} with title "Movie Matcher" with prompt "Multiple movies found. Please choose:"
+        set chosen to choose from list {applescript_list} with title "Choose Movie" with prompt "\n ⚠️ Multiple movies found for \\"{spreadsheet_title}\\". Please choose:\n"
         if chosen is false then
             return "CANCELLED"
         else
@@ -63,8 +88,12 @@ def ask_film_index(opts: list[str]) -> int:
     process = subprocess.Popen(['osascript', '-e', script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     stdout, _ = process.communicate()
 
-    # user pressedd cancel on pop up window
+    # user pressed cancel on pop up window
     if stdout.strip() == "CANCELLED":
+        LOG_FILE.write("\n-- CANCELLED\n")
+        LOG_FILE.write("--      Popup: choose film\n")
+        LOG_FILE.close()
+        print(LOG_CODES["cancelled"], end="")
         sys.exit(0)
 
     left_idx = stdout.find('[')
@@ -100,52 +129,76 @@ def ask_title_change(curr_title: str) -> str:
         return result
 
 
-def search_for_film(search_title: str) -> tuple[str, int]:
+def film_search(spreadsheet_title: str) -> tuple[str, str]:
     '''Fetch the results of searching tmdb for a film. Can contain multiple results
 
     :param search_title: Title from the sc-im spreasheet
     :return: tuple containing the chosen film title and that films id
     '''
+    # config
+    frame: FrameType = sys._getframe()
+
     # make request to search for film and log it
-    query_data: dict[str, str] = {"query" : search_title, "include_adult" : "false", "language" : "en-US", "page" : "1"}
-    response = requests.get(URLS["film_search"], params=query_data, headers=HEADERS)
-    LOG_FILE.write(f"\n-- REQUEST: {response.url}")
+    query_data: dict[str, str] = {"query" : spreadsheet_title, "include_adult" : "false", "language" : "en-US", "page" : "1"}
+    request_line: int = frame.f_lineno + 1
+    response: Response = requests.get(URLS["film_search"], params=query_data, headers=HEADERS)
+    LOG_FILE.write("\n-- REQUEST\n")
+    LOG_FILE.write(f"--     URL: {response.url}\n")
+    LOG_FILE.write(f"--     Response code: {response.status_code}\n")
+    if 300 <= response.status_code < 200:
+        LOG_FILE.write("-- [ERROR] BAD RESPONSE\n")
+        LOG_FILE.write(f"--     Function: {frame.f_code.co_name}\n")
+        LOG_FILE.write(f"--     Line: {request_line}\n")
+        LOG_FILE.write(f"--     Reponse text: {response.text}\n")
+        LOG_FILE.write(LOG_DELIM)
+        LOG_FILE.close()
+        print(LOG_CODES["error"], end="")
+        sys.exit(1)
 
-    # format to python object from JSON
-    json_data: dict[str, Any] = json.loads(response.text)
+    # try to create python object from JSON
+    json_decode_line: int = frame.f_lineno + 2
+    try:
+        json_data: dict[str, Any] = json.loads(response.text)
+    except JSONDecodeError:
+        LOG_FILE.write("\n-- [ERROR] JSON DECODE\n")
+        LOG_FILE.write(f"--     Function: {frame.f_code.co_name}\n")
+        LOG_FILE.write(f"--     Line: {json_decode_line}\n")
+        LOG_FILE.write(f"--     Response text:\n{response.text}\n")
+        LOG_FILE.write(LOG_DELIM)
+        LOG_FILE.close()
+        print(LOG_CODES["error"], end="")
+        sys.exit(1)
 
-    with open("pythonscript_output.txt", "w") as file:
-        file.write(response.text)
+    # no search results for the spreadsheet title grabbed
+    if len(json_data["results"]) == 0:
+        no_films_found_message(spreadsheet_title)
+        LOG_FILE.write("\n-- NO SEARCH RESULTS\n")
+        LOG_FILE.write(f"--     Spreadsheet title: {spreadsheet_title}\n")
+        LOG_FILE.write(LOG_DELIM)
+        LOG_FILE.close()
+        print(LOG_CODES["no_result"], end="")
+        sys.exit(0)
 
     # if more than one result, allow user to choose film
     index: int = 0
+
     if len(json_data["results"]) > 1:
         film_list: list[dict[str, Any]] = json_data["results"]
-        count: int = 0
+        count: int = 1
 
         # build AppleScript list
         opts: list[str] = []
         for f in film_list:
             cleaned_title = f["title"].replace('"', '\\"')
-            opts.append(f'"[{count+1}] {cleaned_title} ({f['release_date']})"')
+            opts.append(f'"[{count}] {cleaned_title} ({f['release_date']})"')
             count += 1
 
-        with open("pythonscript_output.txt", "w") as file:
-            file.write("\n\nabout to call AppleScript 1\n")
-            file.write(str(opts))
-
-
         # index in pop up window is by 1, so need to 0 index
-        index = ask_film_index(opts) - 1
-
-    with open("pythonscript_output.txt", "w") as file:
-        file.write("\n\nabout to call AppleScript 2\n")
-
-
+        index = ask_film_index(opts, spreadsheet_title) - 1
 
     # grab film title (or new one given by user) and its id
     film_title: str = ask_title_change(json_data["results"][index]["title"])
-    film_id: int = json_data["results"][index]["id"]
+    film_id: str = json_data["results"][index]["id"]
 
     return (film_title, film_id)
 
@@ -309,7 +362,7 @@ def ask_user_input(res_dict: dict[str, Any], peronal_keys: list[str]) -> None:
     pass
 
 
-def film_data_json(feat_names: list[str], film_id: int, film_title: str) -> str:
+def film_data_json(feat_names: list[str], film_id: str, film_title: str) -> str:
     '''Organizes film data fetched into a Python dict, encodes to a JSON object, and returns
     a string of the JSON object
 
@@ -326,6 +379,9 @@ def film_data_json(feat_names: list[str], film_id: int, film_title: str) -> str:
     :param film_title: Updated title if user edited it or original title
     :return: str of JSON object
     '''
+    # config
+    frame: FrameType = sys._getframe()
+
     # create dict with feature names
     res_dict: dict[str, Any] = {}
     for name in feat_names:
@@ -335,14 +391,56 @@ def film_data_json(feat_names: list[str], film_id: int, film_title: str) -> str:
         else:
             res_dict[name] = None
 
-    # make and store the requets expected
+    # make the film details requets and store response
+    details_json_data: dict[str, Any] = {}
     details_query_data: dict[str, str] = {"language" : "en_US"}
+    details_request_line = frame.f_lineno + 1
     details_response: Response = requests.get(URLS["film_details"].format(film_id), params=details_query_data, headers=HEADERS)
-    details_json_data: dict[str, Any] = json.loads(details_response.text)
+    LOG_FILE.write("\n-- REQUEST\n")
+    LOG_FILE.write(f"--     URL: {details_response.url}\n")
+    LOG_FILE.write(f"--     Response code: {details_response.status_code}\n")
+    if 300 <= details_response.status_code < 200:
+        LOG_FILE.write("-- [ERROR] BAD RESPONSE\n")
+        LOG_FILE.write(f"--     Function: {frame.f_code.co_name}\n")
+        LOG_FILE.write(f"--     Line: {details_request_line}\n")
+        LOG_FILE.write(f"--     Response text: {details_response.text}\n")
+    else:
+        details_json_decode_line = frame.f_lineno + 2
+        try:
+            details_json_data: dict[str, Any] = json.loads(details_response.text)
+        except JSONDecodeError:
+            details_json_data = {}
+            LOG_FILE.write("\n-- [ERROR] JSON DECODE\n")
+            LOG_FILE.write(f"--     Function: {frame.f_code.co_name}\n")
+            LOG_FILE.write(f"--     Line: {details_json_decode_line}\n")
+            LOG_FILE.write(f"--     Response text:\n{details_response.text}\n")
+            LOG_FILE.close()
 
+    # make the film credits request and store response
+    credits_json_data: dict[str, Any] = {}
     credits_query_data: dict[str, str] = {"language" : "en-US"}
+    credits_request_line = frame.f_lineno + 1
     credits_response: Response = requests.get(URLS["film_credits"].format(film_id), params=credits_query_data, headers=HEADERS)
-    credits_json_data: dict[str, Any] = json.loads(credits_response.text)
+    LOG_FILE.write("\n-- REQUEST\n")
+    LOG_FILE.write(f"--     URL: {credits_response.url}\n")
+    LOG_FILE.write(f"--     Response code: {credits_response.status_code}\n")
+    if 300 <= details_response.status_code < 200:
+        LOG_FILE.write("-- [ERROR] BAD RESPONSE\n")
+        LOG_FILE.write(f"--     Function: {frame.f_code.co_name}\n")
+        LOG_FILE.write(f"--     Line: {credits_request_line}\n")
+        LOG_FILE.write(f"--     Response text: {credits_response.text}\n")
+        LOG_FILE.close()
+    else:
+        credits_json_decode_line = frame.f_lineno + 2
+        try:
+            credits_json_data: dict[str, Any] = json.loads(credits_response.text)
+        except JSONDecodeError:
+            credits_json_data = {}
+            LOG_FILE.write("\n-- [ERROR] JSON DECODE\n")
+            LOG_FILE.write(f"--     Function: {frame.f_code.co_name}\n")
+            LOG_FILE.write(f"--     Line: {credits_json_decode_line}\n")
+            LOG_FILE.write(f"--     Response text:\n{credits_response.text}\n")
+            LOG_FILE.close()
 
     videos_query_data: dict[str, str] = {"language" : "en-US"}
     videos_response = ""
@@ -380,34 +478,48 @@ def film_data_json(feat_names: list[str], film_id: int, film_title: str) -> str:
         elif key in peronal_keys:
             ask_user_input(res_dict, peronal_keys)
 
-
-    with open("pythonscript_output.txt", "w") as file:
-        file.write(json.dumps(res_dict))
-        file.write("\n")
+    LOG_FILE.write("\n-- RESULT\n")
+    LOG_FILE.write(f"--     Python dictionary: {str(res_dict)}\n")
 
     return json.dumps(res_dict)
 
 
 def main():
+    global LOG_FILE
 
-    # check has feature names and title args
-    if len(sys.argv) != 3:
-        LOG_FILE.write("\n-- ERROR: wrong number of args\n")
-        LOG_FILE.write("-- usage: python3 fetch_film_data.py [feat_names] [search_title]\n")
+    # check has feature names, title args, and log mode
+    if len(sys.argv) != 4:
+        LOG_FILE = open(LOG_FILE_NAME, "w")
+        LOG_FILE.write("\n-- [ERROR] INVOCATION\n")
+        LOG_FILE.write("--      Usage: python3 fetch_film_data.py [feat_names] [search_title] [log_file_mode]\n")
+        LOG_FILE.write(f"--      Invocation: python3 fetch_film_data.py {' '.join([arg for arg in sys.argv])}")
         LOG_FILE.close()
         sys.exit(1)
 
     # make a list of feature names
-    # removes the last empty string since lua script appends extra comma
     feat_names: list[str] = sys.argv[1].split(",")
-    search_title: str = sys.argv[2].strip()
- 
-    film_title, film_id = search_for_film(search_title)
+
+    # get spreadsheet title
+    spreadsheet_title: str = sys.argv[2].strip()
+
+    # open log file depending on mode arg
+    if sys.argv[3] == "a":
+        LOG_FILE = open(LOG_FILE_NAME, "a")
+    elif sys.argv[3] == "w":
+        LOG_FILE = open(LOG_FILE_NAME, "w")
+    else:
+        sys.exit(1)
+
+    LOG_FILE.write("\n-- SPREADSHEET TITLE\n")
+    LOG_FILE.write(f"--      title: {spreadsheet_title}\n")
+
+    film_title, film_id = film_search(spreadsheet_title)
 
     # send feature names, film indetifier number, and potentially updated title if user edited it
     print(film_data_json(feat_names, film_id, film_title))
 
-    
+    LOG_FILE.write(LOG_DELIM)
+
 
 if __name__ == "__main__":
     main()
