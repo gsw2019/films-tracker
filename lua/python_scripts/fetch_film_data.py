@@ -56,34 +56,62 @@ def no_films_found_message(spreadsheet_title: str):
     ''' 
     # spawn window
     root = tk.Tk()
-    root.title("🛑 Alert")
+    root.title("Alert")
     root.attributes(topmost=True)   # bring to front
 
-    # add a frame widget to put stuff in
-    frame = ttk.Frame(root, padding=10)
-    frame.pack(fill="both", expand=True)
+    # top container in root for horizontal content (icon + message)
+    content_frame_padding_x, content_frame_padding_y = 20, 30
+    content_frame = ttk.Frame(root)
+    content_frame.pack(padx=content_frame_padding_x, pady=content_frame_padding_y)
 
-    # define how big the spreadsheet title will be
+    # add a frame widget in content frame to put icon in
+    icon_frame = ttk.Frame(content_frame)
+    icon_frame.pack(side="left")
+
+    # add a frame widget to content frame put message in
+    message_frame = ttk.Frame(content_frame)
+    message_frame.pack(side="left")
+
+    # add a frame widget to root to put button in
+    button_frame = ttk.Frame(root, padding=10)
+    button_frame.pack(fill="x")
+
+    # define window contents
+    message_text = "No films with this title were found in TMDb\n"
+    message_font = font.Font(family="Arial", size=12)
+    message_text_size = message_font.measure(message_text)
+
+    title_text = spreadsheet_title
     title_font = font.Font(family="Arial", size=14, weight="bold")
+    title_text_size = title_font.measure(title_text)
 
-    # build labels for each part of message
-    ttk.Label(frame, text="No films with the title:", font=("Arial", 12)).pack(expand=True, anchor="w")
-    ttk.Label(frame, text=f'"{spreadsheet_title}"', font=title_font).pack(expand=True, anchor="w")
-    ttk.Label(frame, text="were found in TMDb.", font=("Arial", 12)).pack(expand=True, anchor="w")
+    icon_text = "🛑"
+    icon_font = font.Font(size=36)
+    icon_text_size = icon_font.measure(icon_text)
 
-    # get variable length title
-    title_width = title_font.measure(f'"{spreadsheet_title}"')
-
-    # set size of window dynamically with title width
-    root.geometry(f"{title_width +50}x150")
-    root.minsize(title_width+50, 150)
-    root.maxsize(title_width+50, 150)
+    # add labels for icon and each part of message
+    message_padding_x = 20
+    ttk.Label(icon_frame, text=icon_text, font=icon_font).grid(row=0, column=0, sticky="w")
+    ttk.Label(message_frame, text=message_text, font=message_font).grid(row=0, column=1, sticky="w", padx=message_padding_x)
+    ttk.Label(message_frame, text=title_text, font=title_font).grid(row=1, column=1, sticky="w", padx=message_padding_x)
 
     # add OK button
-    ttk.Button(frame, text="OK", command=root.destroy).pack(expand=True, anchor="e", padx=10)
+    ttk.Button(button_frame, text="OK", command=root.destroy).pack(expand=True, anchor="e", padx=10)
+
+    # set size of window dynamically with respect to title width if its large
+    default_width = 450
+    defualt_height = 175
+    if title_text_size + content_frame_padding_x * 2 + message_padding_x * 2 > default_width:
+        root_padding = icon_font.measure("🛑") + (message_padding_x * 2) + (content_frame_padding_x * 2)
+        root.geometry(f"{title_text_size + root_padding}x{defualt_height}")
+        root.minsize(title_text_size+root_padding, defualt_height)
+        root.maxsize(title_text_size+root_padding, defualt_height)
+    else:
+        root.geometry(f"{default_width}x{defualt_height}")
+        root.minsize(default_width, defualt_height)
+        root.maxsize(default_width, defualt_height)
 
     root.mainloop()
-
 
 
 def ask_film_index(opts: list[str], spreadsheet_title: str) -> int:
@@ -104,7 +132,7 @@ def ask_film_index(opts: list[str], spreadsheet_title: str) -> int:
     list_element_font = font.Font(family="Arial", size=12)
 
     # create a scrollable widget inside the root window with our film options
-    listbox = tk.Listbox(frame, selectmode=tk.SINGLE, height=10, font=list_element_font)
+    listbox = tk.Listbox(frame, selectmode=tk.SINGLE, height=10, font=list_element_font, activestyle="dotbox", border=1, borderwidth=10)
     max_element_width = 0
     for film in opts:
         list_element_width = list_element_font.measure(film)
