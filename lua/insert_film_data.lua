@@ -169,11 +169,11 @@ function main_single(c, r, mode, multiple, offset)
 
     -- if Python sccript gives back a log code, print message to spreadsheet and exit
     if tonumber(res) == LOG_CODES.error then
-      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "Error")
+      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "Error: " .. spreadsheet_title)
       write_delimeter()
       return LOG_CODES.error
     elseif tonumber(res) == LOG_CODES.cancelled then
-      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "Cancelled")
+      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "Cancelled: " .. spreadsheet_title)
       write_delimeter()
       return LOG_CODES.cancelled
     elseif tonumber(res) == LOG_CODES.no_results then

@@ -48,153 +48,162 @@ HEADERS: dict[str, str] = {
 }
 
 
-def no_films_found_message(spreadsheet_title: str):
+def no_films_found_message(root: tk.Tk, spreadsheet_title: str):
     '''Spawns a window that informs the user no films with spreadsheet_title title
-    was found on tmdb
+    was found in TMDb
 
     :param spreadsheet_title: title grabbed from sc-im spreadsheet
-    ''' 
+    '''
+    # log first
+    LOG_FILE.write("\n-- NO SEARCH RESULTS\n")
+    LOG_FILE.write(f"--     Spreadsheet title: {spreadsheet_title}\n")
+    LOG_FILE.write(LOG_DELIM)
+    LOG_FILE.close()
+
     # spawn window
-    root = tk.Tk()
-    root.title("Alert")
-    root.attributes(topmost=True)   # bring to front
+    popup: tk.Toplevel = tk.Toplevel(root)
+    popup.title("Alert")
+    popup.attributes(topmost=True)   # bring to front
 
     # top container in root for horizontal content (icon + message)
-    content_frame_padding_x, content_frame_padding_y = 20, 30
-    content_frame = ttk.Frame(root)
+    content_frame_padding_x: int = 20
+    content_frame_padding_y: int = 30
+    content_frame = ttk.Frame(popup)
     content_frame.pack(padx=content_frame_padding_x, pady=content_frame_padding_y)
 
-    # add a frame widget in content frame to put icon in
-    icon_frame = ttk.Frame(content_frame)
+    # add a frame widget in content frame and put icon in it
+    icon_frame: ttk.Frame = ttk.Frame(content_frame)
     icon_frame.pack(side="left")
-
-    # add a frame widget to content frame put message in
-    message_frame = ttk.Frame(content_frame)
-    message_frame.pack(side="left")
-
-    # add a frame widget to root to put button in
-    button_frame = ttk.Frame(root, padding=10)
-    button_frame.pack(fill="x")
-
-    # define window contents
-    message_text = "No films with this title were found in TMDb\n"
-    message_font = font.Font(family="Arial", size=12)
-    message_text_size = message_font.measure(message_text)
-
-    title_text = spreadsheet_title
-    title_font = font.Font(family="Arial", size=14, weight="bold")
-    title_text_size = title_font.measure(title_text)
-
-    icon_text = "🛑"
+    icon_text: str = "🛑"
     icon_font = font.Font(size=36)
-    icon_text_size = icon_font.measure(icon_text)
-
-    # add labels for icon and each part of message
-    message_padding_x = 20
     ttk.Label(icon_frame, text=icon_text, font=icon_font).grid(row=0, column=0, sticky="w")
+
+    # add a frame widget to content frame put message in it
+    message_frame: ttk.Frame = ttk.Frame(content_frame)
+    message_frame.pack(side="left")
+    message_text: str = "No films with this title were found in TMDb\n"
+    message_font: font.Font = font.Font(family="Arial", size=12)
+    title_text: str = spreadsheet_title
+    title_font: font.Font = font.Font(family="Arial", size=14, weight="bold")
+    title_text_size: int = title_font.measure(title_text)
+    message_padding_x: int = 20
     ttk.Label(message_frame, text=message_text, font=message_font).grid(row=0, column=1, sticky="w", padx=message_padding_x)
     ttk.Label(message_frame, text=title_text, font=title_font).grid(row=1, column=1, sticky="w", padx=message_padding_x)
 
-    # add OK button
-    ttk.Button(button_frame, text="OK", command=root.destroy).pack(expand=True, anchor="e", padx=10)
+    # add a frame widget to root to put button in
+    button_frame: ttk.Frame = ttk.Frame(popup, padding=10)
+    button_frame.pack(fill="x")
+    ttk.Button(button_frame, text="OK", command=popup.destroy).pack(expand=True, anchor="e", padx=10)
 
     # set size of window dynamically with respect to title width if its large
-    default_width = 450
-    defualt_height = 175
+    default_width: int = 450
+    defualt_height: int = 175
     if title_text_size + content_frame_padding_x * 2 + message_padding_x * 2 > default_width:
         root_padding = icon_font.measure("🛑") + (message_padding_x * 2) + (content_frame_padding_x * 2)
-        root.geometry(f"{title_text_size + root_padding}x{defualt_height}")
-        root.minsize(title_text_size+root_padding, defualt_height)
-        root.maxsize(title_text_size+root_padding, defualt_height)
+        popup.geometry(f"{title_text_size + root_padding}x{defualt_height}")
+        popup.minsize(title_text_size+root_padding, defualt_height)
+        popup.maxsize(title_text_size+root_padding, defualt_height)
     else:
-        root.geometry(f"{default_width}x{defualt_height}")
-        root.minsize(default_width, defualt_height)
-        root.maxsize(default_width, defualt_height)
+        popup.geometry(f"{default_width}x{defualt_height}")
+        popup.minsize(default_width, defualt_height)
+        popup.maxsize(default_width, defualt_height)
 
-    root.mainloop()
+    popup.wait_window()
+
+    print(LOG_CODES["no_result"], end="")
+    sys.exit(0)
 
 
-def ask_film_index(opts: list[str], spreadsheet_title: str) -> int:
+def ask_film_choice(root: tk.Tk, opts: list[str], spreadsheet_title: str) -> int:
     '''Spawns an input window that list the film options a user can choose between
 
     :param opts: List of movie titles and release date
     :return: Index (by 1) of movie chosen by user
     '''
     # spawn window
-    root = tk.Tk()
-    root.title("Choose Film")
-    root.attributes(topmost=True)
+    popup: tk.Toplevel = tk.Toplevel(root)
+    popup.title("Choose Film")
+    popup.attributes(topmost=True)
 
-    # draw a frame inside root window
-    frame = ttk.Frame(root, padding=10)
-    frame.pack(fill="both", expand=True)
+    # add a messaage frame inside root window
+    message_frame: ttk.Frame = ttk.Frame(popup)
+    message_frame.pack(fill="x", expand=True, padx=20, pady=10)
+    icon_text: str = "⚠️"
+    icon_font: font.Font = font.Font(size=24)
+    message_text: str = "Multiple films found. Please choose one from below"
+    message_font: font.Font = font.Font(family="Arial", size=12)
+    ttk.Label(message_frame, text=icon_text, font=icon_font).pack(side="left")
+    ttk.Label(message_frame, text=message_text, font=message_font).pack(side="left", padx=20)
 
-    list_element_font = font.Font(family="Arial", size=12)
-
-    # create a scrollable widget inside the root window with our film options
-    listbox = tk.Listbox(frame, selectmode=tk.SINGLE, height=10, font=list_element_font, activestyle="dotbox", border=1, borderwidth=10)
-    max_element_width = 0
+    # add a litbox frame inside root window
+    listbox_frame: ttk.Frame = ttk.Frame(popup)
+    listbox_frame.pack(fill="both", expand=True)
+    list_element_font: font.Font = font.Font(family="Arial", size=12)
+    listbox: tk.Listbox = tk.Listbox(popup, selectmode=tk.SINGLE, height=10, font=list_element_font, activestyle="none", relief="raised", borderwidth=5)
+    listbox.pack(fill="both", expand=True, padx=20)
+    max_element_width: int = 0
     for film in opts:
         list_element_width = list_element_font.measure(film)
         if list_element_width > max_element_width:
             max_element_width = list_element_width
         listbox.insert(tk.END, film)
 
-    listbox.pack(fill="both", expand=True, pady=10)
+    # add a button frame inside root window
+    button_frame: ttk.Frame = ttk.Frame(popup, padding=10)
+    button_frame.pack(fill="x")
 
-    # function for button to use
+    # function for cancel button to use
+    def cancel_selecction():
+        nonlocal index
+        LOG_FILE.write("\n-- CANCELLED\n")
+        LOG_FILE.write("--      Popup: choose film\n")
+        LOG_FILE.write(f"--      Spreadsheet title: {spreadsheet_title}\n")
+        LOG_FILE.write(LOG_DELIM)
+        print(LOG_CODES["cancelled"], end="")
+        index = -1
+        popup.destroy()
+
+    # function for select button to use
+    index: int = 0
     def get_selected_index():
+        nonlocal index
         if listbox.curselection():
-            root.destroy()
-            return int(listbox.curselection()[0])
+            index = listbox.curselection()[0]
+        popup.destroy()
 
-    # add button that returns index of selection
-    ttk.Button(frame, text="Select film", command=get_selected_index).pack()
-
-    # ad button to cancel selection
-    ttk.Button(frame, text="Cancel", command=root.destroy).pack()
+    ttk.Button(button_frame, text="Cancel", command=cancel_selecction).pack(side="right", padx=10)
+    ttk.Button(button_frame, text="Select film", command=get_selected_index).pack(side="right")
 
     # dynamically adjust window width for longest title
-    root.geometry(f"{max_element_width + 50}x250")
+    popup.geometry(f"{max_element_width + 75}x350")
 
-    root.mainloop()
+    popup.wait_window()
 
-    return 0
-
-
-def ask_title_change(curr_title: str) -> str:
-    '''Spawns an input window that asks the user if they want to change the film title
-
-    :param curr_title: Title of movie user selected
-    :return: str of title chosen
-    '''
-    script = f'''
-    tell application "System Events"
-        activate
-        display dialog "Do you want to change the name of \\"{curr_title}\\"?\\n\\nNew title:" with title "Rename Title" default answer "" buttons {{"Skip", "Confirm"}} default button "Confirm"
-        if button returned of result is "Skip" then
-            return "SKIPPED"
-        else
-            return text returned of result
-        end if
-    end tell
-    '''
-
-    process = subprocess.Popen(['osascript', '-e', script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    stdout, _ = process.communicate()
-
-    result = stdout.strip()
-    if result == "SKIPPED" or result == "":
-        return curr_title
-    else:
-        return result
+    return index
 
 
-def film_search(spreadsheet_title: str) -> tuple[str, str]:
+# def ask_title_change(root: tk.Tk, curr_title: str) -> str:
+#     '''Spawns an input window that asks the user if they want to change the film title
+#
+#     :param curr_title: Title of movie user selected
+#     :return: str of title chosen
+#     '''
+#     popup: tk.Toplevel = tk.Toplevel(root)
+#     popup.title("Change film name?")
+#     popup.attributes(topmost=True)
+#
+#     #
+#     # SCRAPPED
+#     #
+#
+#     return ""
+
+
+def film_search(root: tk.Tk, spreadsheet_title: str) -> str | None:
     '''Fetch the results of searching tmdb for a film. Can contain multiple results
 
     :param search_title: Title from the sc-im spreasheet
-    :return: tuple containing the chosen film title and that films id
+    :return: tuple containing the chosen film title and that films id or None
     '''
     # config
     frame: FrameType = sys._getframe()
@@ -206,6 +215,7 @@ def film_search(spreadsheet_title: str) -> tuple[str, str]:
     LOG_FILE.write("\n-- REQUEST\n")
     LOG_FILE.write(f"--     URL: {response.url}\n")
     LOG_FILE.write(f"--     Response code: {response.status_code}\n")
+    LOG_FILE.flush()
     if 300 <= response.status_code < 200:
         LOG_FILE.write("-- [ERROR] BAD RESPONSE\n")
         LOG_FILE.write(f"--     Function: {frame.f_code.co_name}\n")
@@ -232,36 +242,37 @@ def film_search(spreadsheet_title: str) -> tuple[str, str]:
 
     # no search results for the spreadsheet title grabbed
     if len(json_data["results"]) == 0:
-        no_films_found_message(spreadsheet_title)
-        LOG_FILE.write("\n-- NO SEARCH RESULTS\n")
-        LOG_FILE.write(f"--     Spreadsheet title: {spreadsheet_title}\n")
-        LOG_FILE.write(LOG_DELIM)
-        LOG_FILE.close()
-        print(LOG_CODES["no_result"], end="")
-        sys.exit(0)
+        no_films_found_message(root, spreadsheet_title)
 
     # if more than one result, allow user to choose film
     index: int = 0
-
     if len(json_data["results"]) > 1:
         film_list: list[dict[str, Any]] = json_data["results"]
-        count: int = 1
 
         # build AppleScript list
         opts: list[str] = []
         for f in film_list:
             cleaned_title = f["title"].replace('"', '\\"')
-            opts.append(f'"[{count}] {cleaned_title} ({f['release_date']})"')
-            count += 1
+            opts.append(f"{cleaned_title} ({f['release_date']})")
 
-        # index in pop up window is by 1, so need to 0 index
-        index = ask_film_index(opts, spreadsheet_title) - 1
+        index = ask_film_choice(root, opts, spreadsheet_title)
+        if index == -1:
+            return None
 
-    # grab film title (or new one given by user) and its id
-    film_title: str = ask_title_change(json_data["results"][index]["title"])
     film_id: str = json_data["results"][index]["id"]
 
-    return (film_title, film_id)
+    return film_id
+
+
+def parse_film_title(res_dict: dict[str, Any], key: str, details_json_data: dict[str, Any]):
+    '''Parses the films title from the details data and assigns them to respective
+    key in the result dictionary
+
+    :param res_dict: Result dictionary where data is stored
+    :param key: Dictionary key to write to
+    :param details_json_data: json formatted details data
+    '''
+    res_dict[key] = details_json_data["original_title"]
 
 
 def parse_film_genres(res_dict: dict[str, Any], key: str, details_json_data: dict[str, Any]) -> None:
@@ -423,7 +434,7 @@ def ask_user_input(res_dict: dict[str, Any], peronal_keys: list[str]) -> None:
     pass
 
 
-def film_data_json(feat_names: list[str], film_id: str, film_title: str) -> str:
+def film_data_json(feat_names: list[str], film_id: str) -> str:
     '''Organizes film data fetched into a Python dict, encodes to a JSON object, and returns
     a string of the JSON object
 
@@ -446,11 +457,7 @@ def film_data_json(feat_names: list[str], film_id: str, film_title: str) -> str:
     # create dict with feature names
     res_dict: dict[str, Any] = {}
     for name in feat_names:
-        # since given as param just set immediately
-        if name == "FILM":
-            res_dict[name] = film_title
-        else:
-            res_dict[name] = None
+        res_dict[name] = None
 
     # make the film details requets and store response
     details_json_data: dict[str, Any] = {}
@@ -460,6 +467,7 @@ def film_data_json(feat_names: list[str], film_id: str, film_title: str) -> str:
     LOG_FILE.write("\n-- REQUEST\n")
     LOG_FILE.write(f"--     URL: {details_response.url}\n")
     LOG_FILE.write(f"--     Response code: {details_response.status_code}\n")
+    LOG_FILE.flush()
     if 300 <= details_response.status_code < 200:
         LOG_FILE.write("-- [ERROR] BAD RESPONSE\n")
         LOG_FILE.write(f"--     Function: {frame.f_code.co_name}\n")
@@ -485,6 +493,7 @@ def film_data_json(feat_names: list[str], film_id: str, film_title: str) -> str:
     LOG_FILE.write("\n-- REQUEST\n")
     LOG_FILE.write(f"--     URL: {credits_response.url}\n")
     LOG_FILE.write(f"--     Response code: {credits_response.status_code}\n")
+    LOG_FILE.flush()
     if 300 <= details_response.status_code < 200:
         LOG_FILE.write("-- [ERROR] BAD RESPONSE\n")
         LOG_FILE.write(f"--     Function: {frame.f_code.co_name}\n")
@@ -512,7 +521,9 @@ def film_data_json(feat_names: list[str], film_id: str, film_title: str) -> str:
     for key,value in res_dict.items():
 
         # details
-        if key == "GENRE(S)":
+        if key == "FILM":
+            parse_film_title(res_dict, key, details_json_data)
+        elif key == "GENRE(S)":
             parse_film_genres(res_dict, key, details_json_data)
         elif key == "RELEASE DATE":
             parse_film_release_date(res_dict, key, details_json_data)
@@ -546,7 +557,10 @@ def film_data_json(feat_names: list[str], film_id: str, film_title: str) -> str:
 
 
 def main():
+    # setup
     global LOG_FILE
+    root: tk.Tk = tk.Tk()
+    root.withdraw()
 
     # check has feature names, title args, and log mode
     if len(sys.argv) != 4:
@@ -574,12 +588,15 @@ def main():
     LOG_FILE.write("\n-- SPREADSHEET TITLE\n")
     LOG_FILE.write(f"--      title: {spreadsheet_title}\n")
 
-    film_title, film_id = film_search(spreadsheet_title)
+    film_id = film_search(root, spreadsheet_title)
+    if film_id is None:
+        LOG_FILE.write(LOG_DELIM)
+    else:
+        # printing sends data to Lua script
+        print(film_data_json(feat_names, film_id))
+        LOG_FILE.write(LOG_DELIM)
 
-    # send feature names, film indetifier number, and potentially updated title if user edited it
-    print(film_data_json(feat_names, film_id, film_title))
-
-    LOG_FILE.write(LOG_DELIM)
+    root.destroy()
 
 
 if __name__ == "__main__":
