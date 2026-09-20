@@ -7,18 +7,21 @@ Fetch data from the tmdb3 database for a specified film or list of films
 
 import os
 import sys
-import subprocess
 import requests
 import json
 import io
 import tkinter as tk
+import argparse
 
-from dotenv import load_dotenv
 from tkinter import ttk, font
+from argparse import ArgumentError, ArgumentParser, Namespace
 from typing import Any, TextIO
 from requests import Response
 from types import FrameType
 from json import JSONDecodeError
+
+# non standard python libraries
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -46,6 +49,34 @@ HEADERS: dict[str, str] = {
     "accept": "application/json",
     "Authorization": f"Bearer {os.getenv('API_READ_ACCESS_TOKEN')}"
 }
+
+
+def get_args() -> Namespace:
+    '''Defines the arguments expected on the command line and parses the arguments'''
+
+    parser: ArgumentParser = argparse.ArgumentParser(exit_on_error=False)
+    parser.add_argument("-title", required=True, dest="title", type=str, help="film title")
+    parser.add_argument("-features", required=True, dest="features", type=str, help="feature names tto get data for")
+    parser.add_argument("-mode", required=True, dest="mode", type=str, help="log mode for log file ('a' or 'w')")
+
+    try:
+        args = parser.parse_args()
+        if args.mode != "a" or args.mode != "w":
+            LOG_FILE = open(LOG_FILE_NAME, "w")
+            LOG_FILE.write("\n-- [ERROR] INVOCATION\n")
+            LOG_FILE.write(f"--     Invocation: python3 fetch_film_data.py {' '.join([arg for arg in args._get_args()])}\n")
+            LOG_FILE.write(f"--     Help:\n{parser.print_help}")
+            LOG_FILE.close()
+            sys.exit(1)
+        return args
+    except ArgumentError as e:
+        LOG_FILE = open(LOG_FILE_NAME, "w")
+        LOG_FILE.write("\n-- [ERROR] INVOCATION\n")
+        LOG_FILE.write(f"--     Invocation: python3 fetch_film_data.py {' '.join([arg for arg in e.args])}\n")
+        LOG_FILE.write(f"--     Error message:\n{e.message}")
+        LOG_FILE.write(f"--     Help:\n{parser.print_help}")
+        LOG_FILE.close()
+        sys.exit(1)
 
 
 def no_films_found_message(root: tk.Tk, spreadsheet_title: str):
@@ -230,10 +261,11 @@ def film_search(root: tk.Tk, spreadsheet_title: str) -> str | None:
     json_decode_line: int = frame.f_lineno + 2
     try:
         json_data: dict[str, Any] = json.loads(response.text)
-    except JSONDecodeError:
+    except JSONDecodeError as e:
         LOG_FILE.write("\n-- [ERROR] JSON DECODE\n")
         LOG_FILE.write(f"--     Function: {frame.f_code.co_name}\n")
         LOG_FILE.write(f"--     Line: {json_decode_line}\n")
+        LOG_FILE.write(f"--     Error messaage:\n{e.msg}")
         LOG_FILE.write(f"--     Response text:\n{response.text}\n")
         LOG_FILE.write(LOG_DELIM)
         LOG_FILE.close()
@@ -434,7 +466,7 @@ def ask_user_input(res_dict: dict[str, Any], peronal_keys: list[str]) -> None:
     pass
 
 
-def film_data_json(feat_names: list[str], film_id: str) -> str:
+def film_data_json(feat_names: list[str], film_id: str) -> dict[str, Any]:
     '''Organizes film data fetched into a Python dict, encodes to a JSON object, and returns
     a string of the JSON object
 
@@ -449,7 +481,7 @@ def film_data_json(feat_names: list[str], film_id: str) -> str:
     :param feat_names: Feature names currently in the sc-im spreadsheet
     :param film_id: Unique id for the film
     :param film_title: Updated title if user edited it or original title
-    :return: str of JSON object
+    :return: dict with film data
     '''
     # config
     frame: FrameType = sys._getframe()
@@ -553,7 +585,7 @@ def film_data_json(feat_names: list[str], film_id: str) -> str:
     LOG_FILE.write("\n-- RESULT\n")
     LOG_FILE.write(f"--     Python dictionary: {str(res_dict)}\n")
 
-    return json.dumps(res_dict)
+    return res_dict
 
 
 def main():
@@ -562,39 +594,40 @@ def main():
     root: tk.Tk = tk.Tk()
     root.withdraw()
 
-    # check has feature names, title args, and log mode
-    if len(sys.argv) != 4:
-        LOG_FILE = open(LOG_FILE_NAME, "w")
-        LOG_FILE.write("\n-- [ERROR] INVOCATION\n")
-        LOG_FILE.write("--      Usage: python3 fetch_film_data.py [feat_names] [search_title] [log_file_mode]\n")
-        LOG_FILE.write(f"--      Invocation: python3 fetch_film_data.py {' '.join([arg for arg in sys.argv])}")
-        LOG_FILE.close()
-        sys.exit(1)
+    # get command line args
+    cl_args: Namespace = get_args()
 
     # make a list of feature names
-    feat_names: list[str] = sys.argv[1].split(",")
+    feat_names: list[str] = [feat.stip() for feat in cl_args.features.split(",")]
 
-    # get spreadsheet title
-    spreadsheet_title: str = sys.argv[2].strip()
+    # get spreadsheet title or titles
+    titles: list[str] = [title.strip() for title in cl_args.title.strip().split(",")]
+    if len(titles) > 1:
+        films_data_list: list[dict[str, Any]] = []
+        for title in titles:
+            LOG_FILE.write("\n-- SPREADSHEET TITLE\n")
+            LOG_FILE.write(f"--      title: {title}\n")
 
-    # open log file depending on mode arg
-    if sys.argv[3] == "a":
-        LOG_FILE = open(LOG_FILE_NAME, "a")
-    elif sys.argv[3] == "w":
-        LOG_FILE = open(LOG_FILE_NAME, "w")
+            film_id = film_search(root, title)
+            if film_id is None:
+                LOG_FILE.write(LOG_DELIM)
+            else:
+                films_data_list.append(film_data_json(feat_names, film_id))
+                LOG_FILE.write(LOG_DELIM)
+
+        print(json.dumps(films_data_list))
     else:
-        sys.exit(1)
+        title: str = titles[0]
+        LOG_FILE.write("\n-- SPREADSHEET TITLE\n")
+        LOG_FILE.write(f"--      title: {title}\n")
 
-    LOG_FILE.write("\n-- SPREADSHEET TITLE\n")
-    LOG_FILE.write(f"--      title: {spreadsheet_title}\n")
-
-    film_id = film_search(root, spreadsheet_title)
-    if film_id is None:
-        LOG_FILE.write(LOG_DELIM)
-    else:
-        # printing sends data to Lua script
-        print(film_data_json(feat_names, film_id))
-        LOG_FILE.write(LOG_DELIM)
+        film_id = film_search(root, title)
+        if film_id is None:
+            LOG_FILE.write(LOG_DELIM)
+        else:
+            # printing json string, sends data to Lua script
+            print(json.dumps(film_data_json(feat_names, film_id)))
+            LOG_FILE.write(LOG_DELIM)
 
     root.destroy()
 

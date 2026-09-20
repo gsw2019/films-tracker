@@ -25,6 +25,7 @@ format O 25 2 0
 format P 15 2 0
 freeze 2
 let A0 = 1
+trigger A0 "mode=W type=LUA file=insert_film_data.lua function=main_single"
 leftstring C0 = "No Results: Guardians of the Galaxy V2"
 label B2 = "ID"
 label C2 = "FILM"
@@ -307,12 +308,13 @@ leftstring I32 = "Tom Holland, Michael Keaton, Robert Downey Jr., Marisa Tomei, 
 leftstring J32 = "Michael Giacchino"
 leftstring K32 = "Marvel Studios, Pascal Pictures, LStar Capital, Columbia Pictures"
 leftstring B33 = "31"
-leftstring C33 = "Ant-Man and the Wasp"
-leftstring D33 = "Action, Adventure, Science Fiction"
-label E33 = "2018-07-04"
-label F33 = "119"
+leftstring C33 = "Ant-Man"
+leftstring D33 = "Science Fiction, Adventure, Action"
+leftstring E33 = "2015-07-14"
+leftstring F33 = "117"
 leftstring G33 = "Peyton Reed"
-leftstring I33 = "Paul Rudd, Evangeline Lilly, Michael Douglas, Hannah John-Kamen, Randall Park, Michelle Pfeiffer, Laurence Fishburne, Michael Peña, Walton Goggins, Bobby Cannavale, Judy Greer, T.I., David Dastmalchian, Abby Ryder Fortson, Divian Ladwa"
+leftstring H33 = "Joe Cornish, Edgar Wright"
+leftstring I33 = "Paul Rudd, Michael Douglas, Evangeline Lilly, Corey Stoll, Bobby Cannavale, Anthony Mackie, Judy Greer, Abby Ryder Fortson, Michael Peña, David Dastmalchian, T.I., Wood Harris, Hayley Atwell, John Slattery, Martin Donovan"
 leftstring J33 = "Christophe Beck"
 leftstring K33 = "Marvel Studios"
 leftstring B34 = "32"
@@ -2755,4 +2757,4 @@ cellcolor C998 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E998 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor C999 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E999 "fg=MAGENTA bg=DEFAULT_COLOR"
-goto C22
+goto C24

@@ -123,7 +123,7 @@ function write_to_sheet(curr_col, curr_row, feat_names_table, film_data)
 end
 
 
-function main_single(c, r, mode, multiple, offset)
+function main_single(c, r, mode)
   --[[
     Gets and sets data for a single film. Position of cursor is expected to be
     on target film title
@@ -136,13 +136,11 @@ function main_single(c, r, mode, multiple, offset)
   -- get film title from current cursor pos
   local curr_col = sc.curcol()
   local curr_row = sc.currow()
-  if offset then
-    curr_row = curr_row + offset
-  end
   local spreadsheet_title = sc.lgetstr(curr_col, curr_row)
   if spreadsheet_title == nil then
-    return -1
+    return
   end
+
   LOG_FILE:write("\n-- SPREADSHEET TITLE\n")
   LOG_FILE:write("--    title: " .. spreadsheet_title .. "\n")
   LOG_FILE:flush()
@@ -160,7 +158,7 @@ function main_single(c, r, mode, multiple, offset)
   end
 
   -- call Python script and capture output
-  local command = string.format('python3 %s "%s" "%s" %s', PYTHON_SCRIPT, feat_names_csv, spreadsheet_title, log_file_mode)
+  local command = string.format('python3 %s -title "%s" -features "%s" -mode %s', PYTHON_SCRIPT, spreadsheet_title, feat_names_csv, "w")
   local handle = io.popen(command)
 
   if handle then
@@ -222,10 +220,35 @@ function main_multiple(c, r, mode)
     the first target film. Any empty cells in between target films will stop
     execution.
   ]]
-
   -- clear python logs for new batch
   local python_logs = io.open("logs_python_script.txt", "w")
   python_logs:close()
+
+  -- collect titles
+  local titles = {}
+  local curr_row = sc.currow()
+  local curr_col = sc.curcol()
+  local curr_title = sc.lgetstr(curr_col, curr_row) 
+  while curr_title ~= nil do
+    table.insert(titles, curr_title)
+    curr_row = curr_row + 1
+    curr_title = sc.lgetstr(curr_col, curr_row)
+  end
+
+  -- log the titles
+  LOG_FILE:write("\n-- SPREADSHEET TITLES\n")
+  LOG_FILE:write("--    titles: " .. table.concat(titles, ", ") .. "\n")
+  LOG_FILE:flush()
+
+  -- get current spreadsheet feature names (column titles) and log the feat names
+  local feat_names_csv, feat_names_table = get_features()
+  LOG_FILE:write("\n-- FEATURE NAMES\n")
+  LOG_FILE:write("--    names: " .. feat_names_csv .. "\n")
+  LOG_FILE:flush()
+
+  -- call Python script and capture output
+  local command = string.format('python3 %s "%s" "%s" %s', PYTHON_SCRIPT )
+  local handle = io.popen(command)
 
   local offset = 0
   while true do
