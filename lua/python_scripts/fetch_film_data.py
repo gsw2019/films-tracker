@@ -9,7 +9,6 @@ import os
 import sys
 import requests
 import json
-import io
 import tkinter as tk
 import argparse
 
@@ -26,14 +25,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-LOG_FILE_NAME: str = "logs_python_script.txt"
-LOG_FILE: TextIO = io.StringIO()        # temp place holder for easing type safety
-LOG_CODES = {
+LOG_FILE_NAME: str = "logs/logs_python_script.txt"
+LOG_FILE: TextIO = open(LOG_FILE_NAME, "w")
+LOG_CODES: dict[str, int] = {
     "error" : -1,
     "cancelled" : -2,
     "no_result" : -3
 }
-LOG_DELIM = f"\n\n {"=" * 125}\n"
+LOG_DELIM: str = f"\n\n{"=" * 125}\n{"=" * 125}\n"
 
 URLS:dict[str, str] = {
     # expects title string
@@ -56,30 +55,23 @@ def get_args() -> Namespace:
 
     parser: ArgumentParser = argparse.ArgumentParser(exit_on_error=False)
     parser.add_argument("-title", required=True, dest="title", type=str, help="film title")
-    parser.add_argument("-features", required=True, dest="features", type=str, help="feature names tto get data for")
-    parser.add_argument("-mode", required=True, dest="mode", type=str, help="log mode for log file ('a' or 'w')")
+    parser.add_argument("-features", required=True, dest="features", type=str, help="feature names to get data for")
 
     try:
         args = parser.parse_args()
-        if args.mode != "a" or args.mode != "w":
-            LOG_FILE = open(LOG_FILE_NAME, "w")
-            LOG_FILE.write("\n-- [ERROR] INVOCATION\n")
-            LOG_FILE.write(f"--     Invocation: python3 fetch_film_data.py {' '.join([arg for arg in args._get_args()])}\n")
-            LOG_FILE.write(f"--     Help:\n{parser.print_help}")
-            LOG_FILE.close()
-            sys.exit(1)
         return args
     except ArgumentError as e:
         LOG_FILE = open(LOG_FILE_NAME, "w")
         LOG_FILE.write("\n-- [ERROR] INVOCATION\n")
-        LOG_FILE.write(f"--     Invocation: python3 fetch_film_data.py {' '.join([arg for arg in e.args])}\n")
+        LOG_FILE.write(f"--     Invocation: python3 {' '.join(sys.argv)}\n")
         LOG_FILE.write(f"--     Error message:\n{e.message}")
-        LOG_FILE.write(f"--     Help:\n{parser.print_help}")
+        LOG_FILE.write(f"--     Help:\n{parser.format_help()}")
+        LOG_FILE.write(LOG_DELIM)
         LOG_FILE.close()
         sys.exit(1)
 
 
-def no_films_found_message(root: tk.Tk, spreadsheet_title: str):
+def no_films_found_message(root: tk.Tk, spreadsheet_title: str) -> None:
     '''Spawns a window that informs the user no films with spreadsheet_title title
     was found in TMDb
 
@@ -88,8 +80,7 @@ def no_films_found_message(root: tk.Tk, spreadsheet_title: str):
     # log first
     LOG_FILE.write("\n-- NO SEARCH RESULTS\n")
     LOG_FILE.write(f"--     Spreadsheet title: {spreadsheet_title}\n")
-    LOG_FILE.write(LOG_DELIM)
-    LOG_FILE.close()
+    LOG_FILE.flush()
 
     # spawn window
     popup: tk.Toplevel = tk.Toplevel(root)
@@ -141,9 +132,6 @@ def no_films_found_message(root: tk.Tk, spreadsheet_title: str):
 
     popup.wait_window()
 
-    print(LOG_CODES["no_result"], end="")
-    sys.exit(0)
-
 
 def ask_film_choice(root: tk.Tk, opts: list[str], spreadsheet_title: str) -> int:
     '''Spawns an input window that list the film options a user can choose between
@@ -190,8 +178,7 @@ def ask_film_choice(root: tk.Tk, opts: list[str], spreadsheet_title: str) -> int
         LOG_FILE.write("--      Popup: choose film\n")
         LOG_FILE.write(f"--      Spreadsheet title: {spreadsheet_title}\n")
         LOG_FILE.write(LOG_DELIM)
-        print(LOG_CODES["cancelled"], end="")
-        index = -1
+        index = LOG_CODES["cancelled"]
         popup.destroy()
 
     # function for select button to use
@@ -202,8 +189,8 @@ def ask_film_choice(root: tk.Tk, opts: list[str], spreadsheet_title: str) -> int
             index = listbox.curselection()[0]
         popup.destroy()
 
+    ttk.Button(button_frame, text="Select film", command=get_selected_index).pack(side="right", padx=10)
     ttk.Button(button_frame, text="Cancel", command=cancel_selecction).pack(side="right", padx=10)
-    ttk.Button(button_frame, text="Select film", command=get_selected_index).pack(side="right")
 
     # dynamically adjust window width for longest title
     popup.geometry(f"{max_element_width + 75}x350")
@@ -230,11 +217,11 @@ def ask_film_choice(root: tk.Tk, opts: list[str], spreadsheet_title: str) -> int
 #     return ""
 
 
-def film_search(root: tk.Tk, spreadsheet_title: str) -> str | None:
+def film_search(root: tk.Tk, spreadsheet_title: str) -> str | int:
     '''Fetch the results of searching tmdb for a film. Can contain multiple results
 
     :param search_title: Title from the sc-im spreasheet
-    :return: tuple containing the chosen film title and that films id or None
+    :return: film id or None
     '''
     # config
     frame: FrameType = sys._getframe()
@@ -275,21 +262,21 @@ def film_search(root: tk.Tk, spreadsheet_title: str) -> str | None:
     # no search results for the spreadsheet title grabbed
     if len(json_data["results"]) == 0:
         no_films_found_message(root, spreadsheet_title)
+        return LOG_CODES["no_result"]
 
     # if more than one result, allow user to choose film
     index: int = 0
     if len(json_data["results"]) > 1:
         film_list: list[dict[str, Any]] = json_data["results"]
 
-        # build AppleScript list
         opts: list[str] = []
         for f in film_list:
             cleaned_title = f["title"].replace('"', '\\"')
             opts.append(f"{cleaned_title} ({f['release_date']})")
 
         index = ask_film_choice(root, opts, spreadsheet_title)
-        if index == -1:
-            return None
+        if index == LOG_CODES["cancelled"]:
+            return LOG_CODES["cancelled"]
 
     film_id: str = json_data["results"][index]["id"]
 
@@ -598,7 +585,7 @@ def main():
     cl_args: Namespace = get_args()
 
     # make a list of feature names
-    feat_names: list[str] = [feat.stip() for feat in cl_args.features.split(",")]
+    feat_names: list[str] = [feat.strip() for feat in cl_args.features.split(",")]
 
     # get spreadsheet title or titles
     titles: list[str] = [title.strip() for title in cl_args.title.strip().split(",")]
@@ -607,12 +594,17 @@ def main():
         for title in titles:
             LOG_FILE.write("\n-- SPREADSHEET TITLE\n")
             LOG_FILE.write(f"--      title: {title}\n")
+            LOG_FILE.flush()
 
             film_id = film_search(root, title)
-            if film_id is None:
+            if film_id == LOG_CODES["cancelled"] or film_id == LOG_CODES["no_result"]:
+                print(json.dumps(films_data_list))
+                root.destroy()
                 LOG_FILE.write(LOG_DELIM)
+                LOG_FILE.flush()
+                return
             else:
-                films_data_list.append(film_data_json(feat_names, film_id))
+                films_data_list.append(film_data_json(feat_names, str(film_id)))
                 LOG_FILE.write(LOG_DELIM)
 
         print(json.dumps(films_data_list))
@@ -620,16 +612,20 @@ def main():
         title: str = titles[0]
         LOG_FILE.write("\n-- SPREADSHEET TITLE\n")
         LOG_FILE.write(f"--      title: {title}\n")
+        LOG_FILE.flush()
 
         film_id = film_search(root, title)
-        if film_id is None:
+        if film_id == LOG_CODES["no_result"] or film_id == LOG_CODES["cancelled"]:
             LOG_FILE.write(LOG_DELIM)
+            root.destroy()
         else:
             # printing json string, sends data to Lua script
-            print(json.dumps(film_data_json(feat_names, film_id)))
+            container_list: list[dict[str, Any]] = []
+            container_list.append(film_data_json(feat_names, str(film_id)))
+            print(json.dumps(container_list))
             LOG_FILE.write(LOG_DELIM)
 
-    root.destroy()
+    LOG_FILE.close()
 
 
 if __name__ == "__main__":

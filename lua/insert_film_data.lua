@@ -5,7 +5,7 @@
 ]]
 
 
-LOG_FILE = io.open("logs_lua_script.txt", "w")
+LOG_FILE = io.open("logs/logs_lua_script.txt", "w")
 LOG_CODES = {
   error = -1,
   cancelled = -2,
@@ -28,11 +28,11 @@ LOG_CELL_COL = 2
 -- ############################################################
 
 
-function write_delimeter()
+function write_log_delimeter()
   --[[
     Write the delimeter between films in the log file
-  --]]
-      LOG_FILE:write("\n\n" .. string.rep("=", 125) .. "\n")
+  ]]
+      LOG_FILE:write("\n\n" .. string.rep("=", 125) .. "\n" .. string.rep("=", 125) .. "\n")
       LOG_FILE:flush()
 end
 
@@ -100,24 +100,27 @@ function write_to_sheet(curr_col, curr_row, feat_names_table, film_data)
     param feat_names_table: table preserving order of columns from spreadsheet
     param film_data: table containing film data
   ]]
-  for index,value in ipairs(feat_names_table) do
-    -- skip features we dont have data for
-    if film_data[value] == nil then
-      goto continue
+  for i,film in ipairs(film_data) do
+    for j,value in ipairs(feat_names_table) do
+      -- skip features we dont have data for
+      if film[value] == nil then
+        goto continue
+      end
+
+      -- where to write to
+      local target_row = curr_row + (i - 1)
+      local target_col = curr_col + (j - 1)
+
+      -- check if nested table
+      if type(film[value]) == "table" then
+        -- should only ever be table array
+        sc.lsetstr(target_col, target_row, table.concat(film[value], ", "))
+      else
+        sc.lsetstr(target_col, target_row, film[value])
+      end
+
+      ::continue::
     end
-
-    -- where to write to
-    local target_col = curr_col + (index - 1)
-
-    -- check if nested table
-    if type(film_data[value]) == "table" then
-      -- should only ever be table array
-      sc.lsetstr(target_col, curr_row, table.concat(film_data[value], ", "))
-    else
-      sc.lsetstr(target_col, curr_row, film_data[value])
-    end
-
-    ::continue::
   end
 
 end
@@ -136,13 +139,13 @@ function main_single(c, r, mode)
   -- get film title from current cursor pos
   local curr_col = sc.curcol()
   local curr_row = sc.currow()
-  local spreadsheet_title = sc.lgetstr(curr_col, curr_row)
-  if spreadsheet_title == nil then
+  local curr_title = sc.lgetstr(curr_col, curr_row)
+  if curr_title == nil then
     return
   end
 
   LOG_FILE:write("\n-- SPREADSHEET TITLE\n")
-  LOG_FILE:write("--    title: " .. spreadsheet_title .. "\n")
+  LOG_FILE:write("--    title: " .. curr_title .. "\n")
   LOG_FILE:flush()
 
   -- get current spreadsheet feature names (column titles)
@@ -151,14 +154,8 @@ function main_single(c, r, mode)
   LOG_FILE:write("--    names: " .. feat_names_csv .. "\n")
   LOG_FILE:flush()
 
-  -- determine log file mode
-  local log_file_mode = "w"
-  if multiple then
-    log_file_mode = "a"
-  end
-
   -- call Python script and capture output
-  local command = string.format('python3 %s -title "%s" -features "%s" -mode %s', PYTHON_SCRIPT, spreadsheet_title, feat_names_csv, "w")
+  local command = string.format('python3 %s -title "%s" -features "%s"', PYTHON_SCRIPT, curr_title, feat_names_csv)
   local handle = io.popen(command)
 
   if handle then
@@ -167,17 +164,17 @@ function main_single(c, r, mode)
 
     -- if Python sccript gives back a log code, print message to spreadsheet and exit
     if tonumber(res) == LOG_CODES.error then
-      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "Error: " .. spreadsheet_title)
-      write_delimeter()
-      return LOG_CODES.error
+      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "Error: " .. curr_title)
+      write_log_delimeter()
+      return
     elseif tonumber(res) == LOG_CODES.cancelled then
-      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "Cancelled: " .. spreadsheet_title)
-      write_delimeter()
-      return LOG_CODES.cancelled
+      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "Cancelled: " .. curr_title)
+      write_log_delimeter()
+      return 
     elseif tonumber(res) == LOG_CODES.no_results then
-      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "No Results: " .. spreadsheet_title)
-      write_delimeter()
-      return LOG_CODES.no_results
+      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "No Results: " .. curr_title)
+      write_log_delimeter()
+      return 
     end
 
     -- protected call to avoid crashing for JSON decode failure
@@ -201,14 +198,7 @@ function main_single(c, r, mode)
     LOG_FILE:write("--    Command: " .. command .. "\n")
   end
 
-  write_delimeter()
-
-  -- only time main_single handles closing the log file
-  if not multiple then
-    LOG_FILE:close()
-  end
-
-  return 0, spreadsheet_title
+  write_log_delimeter()
 
 end
 
@@ -220,24 +210,27 @@ function main_multiple(c, r, mode)
     the first target film. Any empty cells in between target films will stop
     execution.
   ]]
-  -- clear python logs for new batch
-  local python_logs = io.open("logs_python_script.txt", "w")
-  python_logs:close()
-
-  -- collect titles
-  local titles = {}
+  -- get title cursor is on
   local curr_row = sc.currow()
   local curr_col = sc.curcol()
-  local curr_title = sc.lgetstr(curr_col, curr_row) 
-  while curr_title ~= nil do
-    table.insert(titles, curr_title)
-    curr_row = curr_row + 1
-    curr_title = sc.lgetstr(curr_col, curr_row)
+  local curr_title = sc.lgetstr(curr_col, curr_row)
+  if curr_title == nil then
+    return
   end
+
+  -- collect all titles
+  local titles_table = {}
+  local temp_curr_row = curr_row
+  while curr_title ~= nil do
+    table.insert(titles_table, curr_title)
+    temp_curr_row = temp_curr_row + 1
+    curr_title = sc.lgetstr(curr_col, temp_curr_row)
+  end
+  local titles_csv = table.concat(titles_table, ", ")
 
   -- log the titles
   LOG_FILE:write("\n-- SPREADSHEET TITLES\n")
-  LOG_FILE:write("--    titles: " .. table.concat(titles, ", ") .. "\n")
+  LOG_FILE:write("--    titles: " .. table.concat(titles_table, ", ") .. "\n")
   LOG_FILE:flush()
 
   -- get current spreadsheet feature names (column titles) and log the feat names
@@ -247,20 +240,50 @@ function main_multiple(c, r, mode)
   LOG_FILE:flush()
 
   -- call Python script and capture output
-  local command = string.format('python3 %s "%s" "%s" %s', PYTHON_SCRIPT )
+  local command = string.format('python3 %s -title "%s" -features "%s"', PYTHON_SCRIPT, titles_csv, feat_names_csv)
   local handle = io.popen(command)
 
-  local offset = 0
-  while true do
-    local status, spreadsheet_title = main_single(c, r, mode, true, offset)
-    if status == 1 or status == LOG_CODES.error or status == LOG_CODES.cancelled then
-      LOG_FILE:close()
+  if handle then
+    local res = handle:read("*a")
+    handle:close()
+
+    -- if Python sccript gives back a log code, print message to spreadsheet and exit
+    if tonumber(res) == LOG_CODES.error then
+      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "Error: " .. titles_csv)
+      write_log_delimeter()
       return
-    elseif status == 0 or status == LOG_CODES.no_results then
-      sc.redraw()
-      offset = offset + 1
+    elseif tonumber(res) == LOG_CODES.cancelled then
+      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "Cancelled: " .. titles_csv)
+      write_log_delimeter()
+      return
+    elseif tonumber(res) == LOG_CODES.no_results then
+      sc.lsetstr(LOG_CELL_COL, LOG_CELL_ROW, "No Results: " .. titles_csv)
+      write_log_delimeter()
+      return
     end
+
+    -- protected call to avoid crashing for JSON decode failure
+    local success, film_data = pcall(JSON.decode, res)
+
+    if success then
+      LOG_FILE:write("\n-- WRITING TO SPREADSHEET\n")
+      LOG_FILE:write("--    film data: " .. dump(film_data) .. "\n")
+      LOG_FILE:flush()
+      write_to_sheet(curr_col, curr_row, feat_names_table, film_data)
+    end
+
+    if not success then
+      LOG_FILE:write("\n-- [ERROR] JSON DECODE\n")
+      LOG_FILE:write("--    Python output: " .. film_data .. "\n")
+      LOG_FILE:flush()
+    end
+  else
+    -- log command that tried to run
+    LOG_FILE:write("\n-- [ERROR] RUN COMMAND\n")
+    LOG_FILE:write("--    Command: " .. command .. "\n")
   end
+
+  write_log_delimeter()
 
 end
 
