@@ -98,7 +98,7 @@ def no_films_found_message(root: tk.Tk, spreadsheet_title: str) -> None:
     icon_frame.pack(side="left")
     icon_text: str = "🛑"
     icon_font = font.Font(size=36)
-    ttk.Label(icon_frame, text=icon_text, font=icon_font).grid(row=0, column=0, sticky="w")
+    ttk.Label(icon_frame, text=icon_text, font=icon_font).pack()
 
     # add a frame widget to content frame put message in it
     message_frame: ttk.Frame = ttk.Frame(content_frame)
@@ -109,26 +109,13 @@ def no_films_found_message(root: tk.Tk, spreadsheet_title: str) -> None:
     title_font: font.Font = font.Font(family="Arial", size=14, weight="bold")
     title_text_size: int = title_font.measure(title_text)
     message_padding_x: int = 20
-    ttk.Label(message_frame, text=message_text, font=message_font).grid(row=0, column=1, sticky="w", padx=message_padding_x)
-    ttk.Label(message_frame, text=title_text, font=title_font).grid(row=1, column=1, sticky="w", padx=message_padding_x)
+    ttk.Label(message_frame, text=message_text, font=message_font).grid(row=0, column=0, sticky="w", padx=message_padding_x)
+    ttk.Label(message_frame, text=title_text, font=title_font).grid(row=1, column=0, sticky="w", padx=message_padding_x)
 
     # add a frame widget to root to put button in
     button_frame: ttk.Frame = ttk.Frame(popup, padding=10)
     button_frame.pack(fill="x")
     ttk.Button(button_frame, text="OK", command=popup.destroy).pack(expand=True, anchor="e", padx=10)
-
-    # set size of window dynamically with respect to title width if its large
-    default_width: int = 450
-    defualt_height: int = 175
-    if title_text_size + content_frame_padding_x * 2 + message_padding_x * 2 > default_width:
-        root_padding = icon_font.measure("🛑") + (message_padding_x * 2) + (content_frame_padding_x * 2)
-        popup.geometry(f"{title_text_size + root_padding}x{defualt_height}")
-        popup.minsize(title_text_size+root_padding, defualt_height)
-        popup.maxsize(title_text_size+root_padding, defualt_height)
-    else:
-        popup.geometry(f"{default_width}x{defualt_height}")
-        popup.minsize(default_width, defualt_height)
-        popup.maxsize(default_width, defualt_height)
 
     popup.wait_window()
 
@@ -144,32 +131,45 @@ def ask_film_choice(root: tk.Tk, opts: list[str], spreadsheet_title: str) -> int
     popup.title("Choose Film")
     popup.attributes(topmost=True)
 
-    # add a messaage frame inside root window
-    message_frame: ttk.Frame = ttk.Frame(popup)
-    message_frame.pack(fill="x", expand=True, padx=20, pady=10)
+    # top container in root for horizontal content (icon + message)
+    content_frame_padding_x: int = 20
+    content_frame_padding_y: int = 30
+    content_frame = ttk.Frame(popup)
+    content_frame.pack(padx=content_frame_padding_x, pady=content_frame_padding_y)
+
+    # add an icon frame inside content frame
+    icon_frame: ttk.Frame = ttk.Frame(content_frame)
+    icon_frame.pack(side="left")
     icon_text: str = "⚠️"
     icon_font: font.Font = font.Font(size=24)
-    message_text: str = "Multiple films found. Please choose one from below"
+    ttk.Label(icon_frame, text=icon_text, font=icon_font).pack()
+
+    # add a messaage frame inside content frame
+    message_frame: ttk.Frame = ttk.Frame(content_frame)
+    message_frame.pack(side="left")
+    message_text_1: str = "Multiple films found. Please choose one from below.\n"
+    message_text_2: str = "Spreadsheet title: "
+    title_font: font.Font = font.Font(family="Arial", size=14, weight="bold")
     message_font: font.Font = font.Font(family="Arial", size=12)
-    ttk.Label(message_frame, text=icon_text, font=icon_font).pack(side="left")
-    ttk.Label(message_frame, text=message_text, font=message_font).pack(side="left", padx=20)
+    message_padding_x: int = 20
+    ttk.Label(message_frame, text=message_text_1, font=message_font).pack(side="top", anchor="w", padx=message_padding_x)
+    ttk.Label(message_frame, text=message_text_2, font=message_font).pack(side="left", padx=message_padding_x)
+    ttk.Label(message_frame, text=spreadsheet_title, font=title_font).pack(side="left")
 
     # add a litbox frame inside root window
     listbox_frame: ttk.Frame = ttk.Frame(popup)
     listbox_frame.pack(fill="both", expand=True)
     list_element_font: font.Font = font.Font(family="Arial", size=12)
-    listbox: tk.Listbox = tk.Listbox(popup, selectmode=tk.SINGLE, height=10, font=list_element_font, activestyle="none", relief="raised", borderwidth=5)
+    listbox: tk.Listbox = tk.Listbox(popup, selectmode=tk.SINGLE, height=10, width=0, font=list_element_font, activestyle="none", relief="raised", borderwidth=5)
     listbox.pack(fill="both", expand=True, padx=20)
-    max_element_width: int = 0
     for film in opts:
-        list_element_width = list_element_font.measure(film)
-        if list_element_width > max_element_width:
-            max_element_width = list_element_width
         listbox.insert(tk.END, film)
 
     # add a button frame inside root window
     button_frame: ttk.Frame = ttk.Frame(popup, padding=10)
     button_frame.pack(fill="x")
+
+    index: int = 0
 
     # function for cancel button to use
     def cancel_selecction():
@@ -182,7 +182,6 @@ def ask_film_choice(root: tk.Tk, opts: list[str], spreadsheet_title: str) -> int
         popup.destroy()
 
     # function for select button to use
-    index: int = 0
     def get_selected_index():
         nonlocal index
         if listbox.curselection():
@@ -192,29 +191,9 @@ def ask_film_choice(root: tk.Tk, opts: list[str], spreadsheet_title: str) -> int
     ttk.Button(button_frame, text="Select film", command=get_selected_index).pack(side="right", padx=10)
     ttk.Button(button_frame, text="Cancel", command=cancel_selecction).pack(side="right", padx=10)
 
-    # dynamically adjust window width for longest title
-    popup.geometry(f"{max_element_width + 75}x350")
-
     popup.wait_window()
 
     return index
-
-
-# def ask_title_change(root: tk.Tk, curr_title: str) -> str:
-#     '''Spawns an input window that asks the user if they want to change the film title
-#
-#     :param curr_title: Title of movie user selected
-#     :return: str of title chosen
-#     '''
-#     popup: tk.Toplevel = tk.Toplevel(root)
-#     popup.title("Change film name?")
-#     popup.attributes(topmost=True)
-#
-#     #
-#     # SCRAPPED
-#     #
-#
-#     return ""
 
 
 def film_search(root: tk.Tk, spreadsheet_title: str) -> str | int:
