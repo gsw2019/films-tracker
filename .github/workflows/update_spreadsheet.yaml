@@ -63,7 +63,7 @@ jobs:
            EOF
 
       - name: check commands
-      - run: cat /tmp/script
+        run: cat /tmp/script
 
       - name: apply command to sheet
         run: script -qec "sc-im films.sc --nocurses --quiet --quit_afterload < /tmp/script" /dev/null
