@@ -10,10 +10,10 @@
 -- ######## SET VARS ##########
 -- ############################
 local TARGET_COL = 1  -- col B
-local RANGE_START = 3
-local RANGE_END = 195
+local RANGE_START = 196
+local RANGE_END = 500
 
-local INIT_VAL = 1
+local INIT_VAL = 196
 local STEP = 1
 -- ############################
 -- ############################

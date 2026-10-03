@@ -1,0 +1,72 @@
+# 
+# update the films.sc spreadsheet when the films_to_ad.txt file changes
+#
+
+
+name: update films.sc with films_to_add.txt data
+
+on:
+  push:
+    paths:
+      - "films_to_add.txt"    # only triggered when this file changes
+
+permissions:
+  contents: write   # allows job to write .sc file back to repo
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install sc-im
+        run: sudo apt-get update && sudo apt-get install -y sc-im
+
+      - name: write titles into next empty title cells
+        run: |
+           # 1) dump spreadhseet to csv
+           sc-im --quite --quit_afterload --nocurses --export_csv films.sc > /tmp/films.csv
+
+           # 2) get index of bottom of spreadsheet and build sc-im commands
+           python3 - <<'EOF' > /tmp/script
+           COLUMN_ID = "B"   # column that contains ID
+           COLUMN_TITLE = "C"   # column that containes titles
+           ID_OFFSET = -2   # ID offset relative to row index
+
+           # parse the spreadsheet data
+           with open("/tmp/films.csv", "r") as f:
+              lines = [l.strip() for l in f]
+
+           # check for blank lines which affect id offset
+           for line in lines:
+              if not line:
+                  ID_OFFSET += -1
+
+           # index of row to start writing to
+           next_row = len(lines)
+
+           # parse titles to add
+           with open("films_to_add.txt", "r") as f:
+              titles = [t.strip() for t in f if t.strip()]
+
+           # write commands
+           for title in titles:
+              cleaned_title = title.replace('"', '\\"')
+              print(f'LABEL {COLUMN_ID}{next_row} = "{next_row + ID_OFFSET}"')
+              print(f'LABEL {COLUMN_TITLE}{next_row} = "{cleaned_title}"')
+              next_row += 1
+
+           print('EXECUTE "w! films.sc"')
+
+           EOF
+
+           sc-im films.sc --nocurses --quiet --quit_afterload < /tmp/script
+
+      - name: Commit updated spreadsheet
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sheet.sc
+          git diff --cached --quiet || git commit -m "Update films.sc from films_to_add.txt"
+          git push
+
