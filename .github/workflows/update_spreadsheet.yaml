@@ -22,12 +22,11 @@ jobs:
       - name: install sc-im
         run: sudo apt-get update && sudo apt-get install -y sc-im
 
-      - name: write titles into next empty title cells
-        run: |
-           # 1) dump spreadhseet to csv
-           echo 'export "csv" "/tmp/films.csv"' | sc-im films.sc --nocurses --quiet --quit_afterload
+      - name: export films.sc to a csv file
+        run: echo 'export "csv" "/tmp/films.csv"' | sc-im films.sc --nocurses --quiet --quit_afterload
 
-           # 2) get index of bottom of spreadsheet and build sc-im commands
+      - name: build sc-im commands
+        run: |
            python3 - <<'EOF' > /tmp/script
            COLUMN_ID = "B"   # column that contains ID
            COLUMN_TITLE = "C"   # column that containes titles
@@ -60,13 +59,14 @@ jobs:
 
            EOF
 
-           sc-im films.sc --nocurses --quiet --quit_afterload < /tmp/script
+      - name: apply command to sheet
+        run: sc-im films.sc --nocurses --quiet --quit_afterload < /tmp/script
 
       - name: Commit updated spreadsheet
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add sheet.sc
+          git add films.sc
           git diff --cached --quiet || git commit -m "Update films.sc from films_to_add.txt"
           git push
 
