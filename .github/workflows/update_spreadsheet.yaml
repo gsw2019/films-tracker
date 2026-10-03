@@ -23,7 +23,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y sc-im
 
       - name: export films.sc to a csv file
-        run: echo 'export "csv" "/tmp/films.csv"' | sc-im films.sc --nocurses --quiet --quit_afterload
+        run: |
+          echo 'export "csv" "/tmp/films.csv"' > /tmp/export_cmd
+          script -qec "sc-im films.sc --nocurses --quiet --quit_afterload < /tmp/export_cmd" /dev/null
+          head -n 5 /tmp/films.csv
 
       - name: build sc-im commands
         run: |
