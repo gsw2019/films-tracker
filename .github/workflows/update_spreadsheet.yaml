@@ -25,7 +25,7 @@ jobs:
       - name: write titles into next empty title cells
         run: |
            # 1) dump spreadhseet to csv
-           sc-im --quite --quit_afterload --nocurses --export_csv films.sc > /tmp/films.csv
+           echo 'export "csv" "/tmp/films.csv"' | sc-im films.sc --nocurses --quiet --quit_afterload
 
            # 2) get index of bottom of spreadsheet and build sc-im commands
            python3 - <<'EOF' > /tmp/script
