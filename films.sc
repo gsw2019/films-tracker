@@ -1374,7 +1374,6 @@ cellcolor C212 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E212 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor C214 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E214 "fg=MAGENTA bg=DEFAULT_COLOR"
-cellcolor C215 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E215 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor C216 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E216 "fg=MAGENTA bg=DEFAULT_COLOR"
@@ -2950,4 +2949,4 @@ cellcolor C1001 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E1001 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor C1002 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E1002 "fg=MAGENTA bg=DEFAULT_COLOR"
-goto C207
+goto C215

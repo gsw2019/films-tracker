@@ -19,19 +19,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: install sc-im
-        run: sudo apt-get update && sudo apt-get install -y sc-im
+      # - name: install sc-im
+      #   run: sudo apt-get update && sudo apt-get install -y sc-im
 
       - name: export films.sc to a csv file
         run: |
           echo 'export "csv" "/tmp/films.csv"' > /tmp/export_cmd
-          script -qec "sc-im films.sc --nocurses --quiet --quit_afterload < /tmp/export_cmd" /dev/null
-          head -n 5 /tmp/films.csv
+          # use script to simulate terminal env on runner and get sc-im to run commands
+          script -qec "sc-im --quite --quit_afterload --nocurses --export_csv films.sc > /tmp/films.csv" /dev/null
 
       - name: build sc-im commands
         run: |
            python3 - <<'EOF' > /tmp/script
-           COLUMN_ID = "B"   # column that contains ID
+           COLUMN_ID = "B"   # column that contains IDs
            COLUMN_TITLE = "C"   # column that containes titles
            ID_OFFSET = -2   # ID offset relative to row index
 
@@ -58,15 +58,20 @@ jobs:
               print(f'LABEL {COLUMN_TITLE}{next_row} = "{cleaned_title}"')
               next_row += 1
 
-           print('EXECUTE "w! films.sc"')
+           # print('EXECUTE "w! films.sc"')
 
            EOF
 
       - name: check commands
         run: cat /tmp/script
 
-      - name: apply command to sheet
-        run: script -qec "sc-im films.sc --nocurses --quiet --quit_afterload < /tmp/script" /dev/null
+      - name: apply commands to sheet
+        run: |
+          # gets last byte of films.sc (tail -c1), strips new lines ("$(...)")  and checks if its non empty (-n)
+          # if it is non empty (left side evaluaates to true) add a new line (echo)
+          [ -n "$(tail -c1 films.sc)" ] && echo >> films.sc
+          cat /tmp/script >> films.sc
+          git diff films.sc
 
       - name: Commit updated spreadsheet
         run: |
