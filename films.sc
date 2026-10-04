@@ -4,7 +4,7 @@
 newsheet "Sheet1"
 movetosheet "Sheet1"
 offscr_sc_cols 0
-offscr_sc_rows 167
+offscr_sc_rows 190
 nb_frozen_rows 1
 nb_frozen_cols 1
 nb_frozen_screenrows 1
@@ -2948,7 +2948,3 @@ cellcolor E1001 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor C1002 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E1002 "fg=MAGENTA bg=DEFAULT_COLOR"
 goto B215
-LEFTSTRING B215 = "210"
-LEFTSTRING C215 = "eternals"
-LEFTSTRING B216 = "211"
-LEFTSTRING C216 = "saving private ryan"
