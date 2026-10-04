@@ -24,9 +24,11 @@ jobs:
 
       - name: export films.sc to a csv file
         run: |
-          # echo 'export "csv" "/tmp/films.csv"' > /tmp/export_cmd
           # use script to simulate terminal env on runner and get sc-im to run commands
           script -qec "sc-im --quite --quit_afterload --nocurses --export_csv films.sc > /tmp/films.csv" /dev/null
+
+      - name: check csv
+        run: cat /tmp/films.csv
 
       - name: build sc-im commands
         run: |
