@@ -35,7 +35,7 @@ jobs:
            python3 - <<'EOF' > /tmp/script
            COLUMN_ID = "B"   # column that contains IDs
            COLUMN_TITLE = "C"   # column that containes titles
-           ID_OFFSET = -2   # ID offset relative to row index
+           ID_OFFSET = -3   # ID offset relative to row index
 
            # parse the spreadsheet data
            with open("/tmp/films.csv", "r") as f:
@@ -53,14 +53,16 @@ jobs:
            with open("films_to_add.txt", "r") as f:
               titles = [t.strip() for t in f if t.strip()]
 
+           # clear the titles to add
+           with open("films_to_add.txt", "w") as f:
+              pass
+
            # write commands
            for title in titles:
               cleaned_title = title.replace('"', '\\"')
-              print(f'LABEL {COLUMN_ID}{next_row} = "{next_row + ID_OFFSET}"')
-              print(f'LABEL {COLUMN_TITLE}{next_row} = "{cleaned_title}"')
+              print(f'LEFTSTRING {COLUMN_ID}{next_row} = "{next_row + ID_OFFSET}"')
+              print(f'LEFTSTRING {COLUMN_TITLE}{next_row} = "{cleaned_title}"')
               next_row += 1
-
-           # print('EXECUTE "w! films.sc"')
 
            EOF
 
@@ -80,6 +82,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add films.sc
+          git add films_to_add.txt
           git diff --cached --quiet || git commit -m "Update films.sc from films_to_add.txt"
           git push
 

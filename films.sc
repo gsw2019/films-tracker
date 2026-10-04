@@ -4,7 +4,7 @@
 newsheet "Sheet1"
 movetosheet "Sheet1"
 offscr_sc_cols 0
-offscr_sc_rows 189
+offscr_sc_rows 167
 nb_frozen_rows 1
 nb_frozen_cols 1
 nb_frozen_screenrows 1
@@ -1376,7 +1376,6 @@ cellcolor C214 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E214 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E215 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E216 "fg=MAGENTA bg=DEFAULT_COLOR"
-cellcolor C217 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E217 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor C218 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E218 "fg=MAGENTA bg=DEFAULT_COLOR"
@@ -2948,10 +2947,4 @@ cellcolor C1001 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E1001 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor C1002 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E1002 "fg=MAGENTA bg=DEFAULT_COLOR"
-goto B216
-LABEL B215 = "211"
-LABEL C215 = "eternals"
-LABEL B216 = "212"
-LABEL C216 = "movie 1"
-LABEL B217 = "213"
-LABEL C217 = "movie 2"
+goto B215
