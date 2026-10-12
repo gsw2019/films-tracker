@@ -38,14 +38,14 @@ jobs:
            python3 - <<'EOF' > /tmp/script
            COLUMN_ID = "B"   # column that contains IDs
            COLUMN_TITLE = "C"   # column that containes titles
-           ID_OFFSET = -3   # ID offset relative to row index
+           ID_OFFSET = -2   # ID offset relative to row index
 
            # parse the spreadsheet data
            with open("/tmp/films.csv", "r") as f:
               lines = [l.strip() for l in f]
 
-           # check for blank lines which affect id offset
-           for line in lines:
+           # check for blank lines after where films start which affect id offset
+           for line in lines[3:]:
               if not line:
                   ID_OFFSET += -1
 

@@ -4,7 +4,7 @@
 newsheet "Sheet1"
 movetosheet "Sheet1"
 offscr_sc_cols 0
-offscr_sc_rows 190
+offscr_sc_rows 193
 nb_frozen_rows 1
 nb_frozen_cols 1
 nb_frozen_screenrows 1
@@ -1377,9 +1377,7 @@ cellcolor E213 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E214 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E215 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E216 "fg=MAGENTA bg=DEFAULT_COLOR"
-cellcolor C217 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E217 "fg=MAGENTA bg=DEFAULT_COLOR"
-cellcolor C218 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E218 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor C219 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E219 "fg=MAGENTA bg=DEFAULT_COLOR"
@@ -2948,13 +2946,3 @@ cellcolor E1000 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor C1001 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E1001 "fg=MAGENTA bg=DEFAULT_COLOR"
 goto B214
-LEFTSTRING B214 = "210"
-LEFTSTRING C214 = "Eternals"
-LEFTSTRING B215 = "211"
-LEFTSTRING C215 = "The Town"
-LEFTSTRING B216 = "212"
-LEFTSTRING C216 = "Nightmare on Elm Street"
-LEFTSTRING B217 = "213"
-LEFTSTRING C217 = "Nightmare on ELm Street"
-LEFTSTRING B218 = "214"
-LEFTSTRING C218 = "Casino Royale"
