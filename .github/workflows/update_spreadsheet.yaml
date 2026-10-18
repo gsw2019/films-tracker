@@ -109,7 +109,7 @@ jobs:
             print(" |")
 
             # build and print content rows
-            for line in reader[FILMS_START_ROW_INDEX:]
+          for line in reader[FILMS_START_ROW_INDEX:]:
               print("| ", end="")
               print(" | ".join(content), end="")
               print(" |")
