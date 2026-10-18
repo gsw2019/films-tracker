@@ -94,10 +94,10 @@ jobs:
 
           with open("/tmp/films.csv", newline='') as f:
             # list of strings as rows
-            reader = csv.reader(f, delimiter=',', quotechar='"')
+            rows = list(csv.reader(f, delimiter=',', quotechar='"'))
 
             # build and print header row
-            headers = reader[HEADER_ROW_INDEX]
+            headers = rows[HEADER_ROW_INDEX]
             print("| ", end="")
             print(" | ".join(headers), end="")
             print(" |")
@@ -109,7 +109,7 @@ jobs:
             print(" |")
 
             # build and print content rows
-          for line in reader[FILMS_START_ROW_INDEX:]:
+            for line in row[FILMS_START_ROW_INDEX:]:
               print("| ", end="")
               print(" | ".join(content), end="")
               print(" |")
