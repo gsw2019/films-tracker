@@ -111,7 +111,7 @@ jobs:
             # build and print content rows
             for line in rows[FILMS_START_ROW_INDEX:]:
               print("| ", end="")
-              print(" | ".join(content), end="")
+              print(" | ".join(line), end="")
               print(" |")
 
           EOF
