@@ -91,19 +91,20 @@ jobs:
 
           HEADER_ROW_INDEX = 2
           FILMS_START_ROW_INDEX = HEADER_ROW_INDEX + 1
+          COLUMNS_TO_SKIP = 1
 
           with open("/tmp/films.csv", newline='') as f:
-            # list of strings as rows
+            # 2D list with each row being a list of strings
             rows = list(csv.reader(f, delimiter=',', quotechar='"'))
 
             # build and print header row
             headers = rows[HEADER_ROW_INDEX]
             print("| ", end="")
-            print(" | ".join(headers), end="")
+            print(" | ".join(headers[COLUMNS_TO_SKIP:]), end="")
             print(" |")
 
             # build and print diving row between headers and content
-            dividing_row = ["----"] * len(headers)
+            dividing_row = ["----"] * (len(headers) - COLUMNS_TO_SKIP)
             print("| ", end="")
             print(" | ".join(dividing_row), end="")
             print(" |")
@@ -111,7 +112,7 @@ jobs:
             # build and print content rows
             for line in rows[FILMS_START_ROW_INDEX:]:
               print("| ", end="")
-              print(" | ".join(line), end="")
+              print(" | ".join(line[COLUMNS_TO_SKIP:]), end="")
               print(" |")
 
           EOF
