@@ -82,10 +82,10 @@ jobs:
           git diff films.sc
 
       - name: export films.sc to a .csv with updated data
-      - run: script -qec "sc-im --quite --quit_afterload --nocurses --export_csv films.sc > /tmp/films.csv" /dev/null
+        run: script -qec "sc-im --quite --quit_afterload --nocurses --export_csv films.sc > /tmp/films.csv" /dev/null
 
       - name: generaate a .md file containing a table
-      - run: |
+        run: |
           python3 - <<'EOF' > /tmp/markdown_table.md
           HEADER_ROW_INDEX = 2
           FILMS_START_ROW_INDEX = HEADER_ROW + 1
@@ -115,10 +115,10 @@ jobs:
           EOF
 
       - name: check .md file
-      - run: cat /tmp/markdown_table.md
+        run: cat /tmp/markdown_table.md
 
       - name: update README.md with markdow_table.md
-      - run: cat /tmp/markdown_table.md > README.md
+        run: cat /tmp/markdown_table.md > README.md
 
       - name: Commit updated spreadsheet
         run: |
