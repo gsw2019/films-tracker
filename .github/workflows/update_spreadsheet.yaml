@@ -35,17 +35,18 @@ jobs:
 
       - name: build sc-im commands
         run: |
-           python3 - <<'EOF' > /tmp/script
+           python3 - <<'EOF' > /tmp/scim_cmds_script.txt
            COLUMN_ID = "B"   # column that contains IDs
            COLUMN_TITLE = "C"   # column that containes titles
            ID_OFFSET = -2   # ID offset relative to row index
+           FILMS_START_ROW_INDEX = 3
 
            # parse the spreadsheet data
            with open("/tmp/films.csv", "r") as f:
               lines = [l.strip() for l in f]
 
            # check for blank lines after where films start which affect id offset
-           for line in lines[3:]:
+           for line in lines[FILMS_START_ROW_INDEX:]:
               if not line:
                   ID_OFFSET += -1
 
@@ -70,15 +71,54 @@ jobs:
            EOF
 
       - name: check commands
-        run: cat /tmp/script
+        run: cat /tmp/scim_cmds_script.txt
 
       - name: apply commands to sheet
         run: |
           # gets last byte of films.sc (tail -c1), strips new lines ("$(...)")  and checks if its non empty (-n)
           # if it is non empty (left side evaluaates to true) add a new line (echo)
           [ -n "$(tail -c1 films.sc)" ] && echo >> films.sc
-          cat /tmp/script >> films.sc
+          cat /tmp/scim_cmds_script.txt >> films.sc
           git diff films.sc
+
+      - name: export films.sc to a .csv with updated data
+      - run: script -qec "sc-im --quite --quit_afterload --nocurses --export_csv films.sc > /tmp/films.csv" /dev/null
+
+      - name: generaate a .md file containing a table
+      - run: |
+          python3 - <<'EOF' > /tmp/markdown_table.md
+          HEADER_ROW_INDEX = 2
+          FILMS_START_ROW_INDEX = HEADER_ROW + 1
+
+          with open("/tmp/films.csv", "r") as f:
+            lines = [l.strip() for l in f]
+
+          # build a print header row
+          headers = [h.strip() for h in lines[HEADER_ROW_INDEX].split(',')]
+          print("| ", end="")
+          print(" | ".join(headers), end="")
+          print(" |")
+
+          # build and print diving row between headers and content
+          dividers = ["----"] * len(headers)
+          print("| ", end="")
+          print(" | ".join(dividers), end="")
+          print(" |")
+
+          # build and print content rows
+          for line in lines[FILMS_START_ROW_INDEX:]:
+            content = [element.strip() for element in line.split(',')]
+            print("| ", end="")
+            print(" | ".join(content), end="")
+            print(" |")
+
+          EOF
+
+      - name: check .md file
+      - run: cat /tmp/markdown_table.md
+
+      - name: update README.md with markdow_table.md
+      - run: cat /tmp/markdown_table.md > README.md
 
       - name: Commit updated spreadsheet
         run: |
@@ -86,6 +126,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add films.sc
           git add films_to_add.txt
+          git add README.md
           git diff --cached --quiet || git commit -m "Update films.sc from films_to_add.txt"
           git push
 
