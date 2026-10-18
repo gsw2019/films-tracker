@@ -87,30 +87,32 @@ jobs:
       - name: generaate a .md file containing a table
         run: |
           python3 - <<'EOF' > /tmp/markdown_table.md
+          import csv
+
           HEADER_ROW_INDEX = 2
           FILMS_START_ROW_INDEX = HEADER_ROW_INDEX + 1
 
-          with open("/tmp/films.csv", "r") as f:
-            lines = [l.strip() for l in f]
+          with open("/tmp/films.csv", newline='') as f:
+            # list of strings as rows
+            reader = csv.reader(f, delimiter=',', quotechar='"')
 
-          # build a print header row
-          headers = [h.strip() for h in lines[HEADER_ROW_INDEX].split(',')]
-          print("| ", end="")
-          print(" | ".join(headers), end="")
-          print(" |")
-
-          # build and print diving row between headers and content
-          dividers = ["----"] * len(headers)
-          print("| ", end="")
-          print(" | ".join(dividers), end="")
-          print(" |")
-
-          # build and print content rows
-          for line in lines[FILMS_START_ROW_INDEX:]:
-            content = [element.strip() for element in line.split(',')]
+            # build and print header row
+            headers = reader[HEADER_ROW_INDEX]
             print("| ", end="")
-            print(" | ".join(content), end="")
+            print(" | ".join(headers), end="")
             print(" |")
+
+            # build and print diving row between headers and content
+            dividing_row = ["----"] * len(headers)
+            print("| ", end="")
+            print(" | ".join(dividing_row), end="")
+            print(" |")
+
+            # build and print content rows
+            for line in reader[FILMS_START_ROW_INDEX:]
+              print("| ", end="")
+              print(" | ".join(content), end="")
+              print(" |")
 
           EOF
 
