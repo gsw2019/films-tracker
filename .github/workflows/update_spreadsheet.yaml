@@ -88,7 +88,7 @@ jobs:
         run: |
           python3 - <<'EOF' > /tmp/markdown_table.md
           HEADER_ROW_INDEX = 2
-          FILMS_START_ROW_INDEX = HEADER_ROW + 1
+          FILMS_START_ROW_INDEX = HEADER_ROW_INDEX + 1
 
           with open("/tmp/films.csv", "r") as f:
             lines = [l.strip() for l in f]
