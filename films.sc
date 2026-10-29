@@ -4,7 +4,7 @@
 newsheet "Sheet1"
 movetosheet "Sheet1"
 offscr_sc_cols 0
-offscr_sc_rows 208
+offscr_sc_rows 28
 nb_frozen_rows 1
 nb_frozen_cols 1
 nb_frozen_screenrows 1
@@ -3061,22 +3061,4 @@ cellcolor C1000 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E1000 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor C1001 "fg=MAGENTA bg=DEFAULT_COLOR"
 cellcolor E1001 "fg=MAGENTA bg=DEFAULT_COLOR"
-goto C208
-LEFTSTRING B219 = "217"
-LEFTSTRING C219 = "Superman/Batman: Apocalypse"
-LEFTSTRING B220 = "218"
-LEFTSTRING C220 = "test 1"
-LEFTSTRING B221 = "219"
-LEFTSTRING C221 = "test 2"
-LEFTSTRING B222 = "220"
-LEFTSTRING C222 = "test"
-LEFTSTRING B223 = "221"
-LEFTSTRING C223 = "test"
-LEFTSTRING B224 = "222"
-LEFTSTRING C224 = "test"
-LEFTSTRING B225 = "223"
-LEFTSTRING C225 = "test"
-LEFTSTRING B226 = "224"
-LEFTSTRING C226 = "test"
-LEFTSTRING B227 = "225"
-LEFTSTRING C227 = "test"
+goto B32
