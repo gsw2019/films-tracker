@@ -214,14 +214,6 @@
 | 212 | Eternals |
 | 213 | The Town | Crime, Drama, Thriller | 2010-09-15 | 125 | Ben Affleck |  | Ben Affleck, Jeremy Renner, Rebecca Hall, Jon Hamm, Blake Lively, George Carroll, Pete Postlethwaite, Owen Burke, Titus Welliver, Chris Cooper, Dennis McLaughlin, Corena Chase, Brian Scannell, Kerri Dunbar, Tony V. | David Buckley, Harry Gregson-Williams | Legendary Pictures, GK Films, Thunder Road, Warner Bros. Pictures |
 | 214 | A Nightmare on Elm Street | Horror | 1984-11-09 | 91 | Wes Craven | Wes Craven | Heather Langenkamp, Johnny Depp, Robert Englund, Amanda Wyss, Jsu Garcia, John Saxon, Ronee Blakley, Charles Fleischer, Joseph Whipp, Lin Shaye, Joe Unger, Mimi Craven, Jack Shea, Ed Call, Sandy Lipton | Charles Bernstein | New Line Cinema, Smart Egg Pictures, Media Home Entertainment, Cinema 84, The Elm Street Venture |
-| 215 | A Nightmare on Elm Street | Horror, Mystery, Thriller | 2010-04-30 | 95 | Samuel Bayer | Wesley Strick | 0.00"Rooney Mara |  Kyle Gallner |  Jackie Earle Haley |  Katie Cassidy |  Thomas Dekker |  Kellan Lutz |  Clancy Brown |  Connie Britton |  Lia D. Mortensen |  Julianna Damm |  Christian Stolte |  Katie Schooping Knight |  Hailey Schooping Knight |  Leah Uteg |  Don Robert Cass" | Steve Jablonsky | Platinum Dunes, New Line Cinema |
+| 215 | A Nightmare on Elm Street | Horror, Mystery, Thriller | 2010-04-30 | 95 | Samuel Bayer | Wesley Strick | 0.00 | Steve Jablonsky | Platinum Dunes, New Line Cinema |
 | 216 | Casino Royale | Adventure, Action, Thriller | 2006-11-14 | 144 | Martin Campbell |  | Daniel Craig, Eva Green, Mads Mikkelsen, Judi Dench, Jeffrey Wright, Giancarlo Giannini, Caterina Murino, Simon Abkarian, Isaach de Bankolé, Jesper Christensen, Ivana Miličević, Tobias Menzies, Claudio Santamaria, Sébastien Foucan, Malcolm Sinclair | David Arnold | Metro-Goldwyn-Mayer, Columbia Pictures, EON Productions, Casino Royale Productions |
-| 217 | Superman/Batman: Apocalypse |
-| 218 | test 1 |
-| 219 | test 2 |
-| 220 | test |
-| 221 | test |
-| 222 | test |
-| 223 | test |
-| 224 | test |
-| 225 | test |
+| 217 | memento |
